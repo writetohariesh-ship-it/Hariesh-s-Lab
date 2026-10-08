@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sikku Kolam Studio</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: the kolam floor dominates on the left like a doorstep seen from above; a narrow control column sits on the right and stacks below on phones */
+:root {
+  color-scheme: dark;
+  --bg: #1b1411;
+  --panel: #251c17;
+  --ink: #f3e9dc;
+  --muted: #b3a291;
+  --accent: #f2b84b;
+  --line: #3b2d25;
+  --display: "Young Serif", Georgia, "Times New Roman", serif;
+  --body: "Figtree", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; padding-inline: 16px; padding-block: 24px; }
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 20px; }
+header { display: grid; gap: 4px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(2rem, 6vw, 3rem); line-height: 1.05; margin: 0; text-wrap: balance; }
+h1 em { font-style: normal; color: var(--accent); }
+.lede { margin: 0; color: var(--muted); max-width: 62ch; }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 20px; align-items: start; }
+@media (max-width: 780px) { .main { grid-template-columns: 1fr; } }
+.floor { border-radius: 18px; overflow: hidden; aspect-ratio: 1; max-width: 100%; position: relative; transition: background .4s; }
+.floor svg { width: 100%; height: 100%; display: block; }
+.badge { position: absolute; left: 14px; bottom: 14px; font: 500 .78rem var(--mono); letter-spacing: .04em; padding: 5px 10px; border-radius: 999px; background: rgba(0,0,0,.35); color: #fff7ea; backdrop-filter: blur(4px); }
+.badge.one { background: var(--accent); color: #2a1a0c; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 16px; min-width: 0; }
+.field { display: grid; gap: 6px; }
+.field label, .lbl { font-size: .72rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; }
+.field label b { font: 500 .85rem var(--mono); color: var(--ink); letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.swatch { height: 38px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; position: relative; }
+.swatch[aria-pressed="true"] { border-color: var(--ink); }
+.swatch span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.2rem; }
+.toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: .95rem; }
+.toggle input { accent-color: var(--accent); width: 18px; height: 18px; }
+.btns { display: grid; gap: 8px; }
+button.big { font: 600 1rem var(--body); padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
+button.big.primary { background: var(--accent); color: #2a1a0c; border-color: var(--accent); }
+button.big:hover:not(:disabled) { border-color: var(--accent); }
+button.big:disabled { opacity: .6; cursor: wait; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.msg { min-height: 1.4em; margin: 0; font-size: .88rem; color: var(--muted); }
+.code { display: flex; gap: 6px; }
+.code input { flex: 1; min-width: 0; font: 500 .85rem var(--mono); background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.code button { font: 600 .85rem var(--body); background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; cursor: pointer; }
+.glossary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 24px; border-top: 1px solid var(--line); padding-top: 16px; }
+.glossary div { display: grid; gap: 2px; }
+.glossary dt { font-family: var(--display); font-size: 1.1rem; }
+.glossary dd { margin: 0; color: var(--muted); font-size: .9rem; }
+.credit { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); padding-top: 14px; margin: 0; }
+.credit a { color: var(--accent); }
+dl { margin: 0; }
+</style>
+</head>
+<body style="margin:0">
+
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useMemo, useEffect, useRef } = React;
+
+/* ---------- The math: mirror curves ----------
+   Dots sit at odd coordinates (2i+1, 2j+1). The line travels diagonally
+   through the midpoints of the edges between dots. At each midpoint it
+   either crosses straight through or bounces off a "mirror". The outer
+   border is always a mirror, so the line can never escape. Random inner
+   mirrors decide the pattern. Fewer loops = harder kolam; one loop = sikku. */
+
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function makeMirrors(n, density, symmetric, seed) {
+  const W = 2 * n, rand = rng(seed), memo = new Map(), states = new Map();
+  for (let x = 1; x < W; x++) for (let y = 1; y < W; y++) {
+    if ((x + y) % 2 === 0) continue;
+    let key = `${x},${y}`;
+    if (symmetric) {
+      // Four-fold turning symmetry: a point and its three 90° rotations share one mirror.
+      const orbit = [[x, y], [y, W - x], [W - x, W - y], [W - y, x]].map(([a, b]) => a * 1000 + b);
+      key = String(Math.min(...orbit));
+    }
+    if (!memo.has(key)) {
+      const r = rand();
+      memo.set(key, r < density ? (rand() < 0.5 ? 1 : 2) : 0);
+    }
+    states.set(`${x},${y}`, memo.get(key));
+  }
+  return states;
+}
+
+function trace(n, mirrors) {
+  const W = 2 * n;
+  const turn = (x, y, dx, dy) => {
+    if (x === 0 || x === W) return [-dx, dy];
+    if (y === 0 || y === W) return [dx, -dy];
+    const s = mirrors.get(`${x},${y}`);
+    if (!s) return [dx, dy];
+    const vertical = x % 2 === 0;
+    const flipX = (vertical && s === 1) || (!vertical && s === 2);
+    return flipX ? [-dx, dy] : [dx, -dy];
+  };
+  const seen = new Set(), loops = [];
+  const inside = (x, y) => x >= 0 && y >= 0 && x <= W && y <= W;
+  for (let x = 0; x <= W; x++) for (let y = 0; y <= W; y++) {
+    if ((x + y) % 2 === 0) continue;
+    for (const [dx, dy] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      if (!inside(x + dx, y + dy) || seen.has(`${x},${y},${dx},${dy}`)) continue;
+      const pts = [[x, y]];
+      let px = x, py = y, ddx = dx, ddy = dy, guard = 0;
+      while (guard++ < 100000) {
+        seen.add(`${px},${py},${ddx},${ddy}`);
+        const qx = px + ddx, qy = py + ddy;
+        seen.add(`${qx},${qy},${-ddx},${-ddy}`);
+        const [ox, oy] = turn(qx, qy, ddx, ddy);
+        if (qx === x && qy === y && ox === dx && oy === dy) break;
+        pts.push([qx, qy]);
+        px = qx; py = qy; ddx = ox; ddy = oy;
+      }
+      loops.push(pts);
+    }
+  }
+  return loops;
+}
+
+// Smooth closed path: pass through segment midpoints, use the passage points as controls.
+function toPath(pts) {
+  const m = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const k = pts.length;
+  const start = m(pts[k - 1], pts[0]);
+  let d = `M${start[0]} ${start[1]}`;
+  for (let i = 0; i < k; i++) {
+    const c = pts[i], e = m(pts[i], pts[(i + 1) % k]);
+    d += ` Q${c[0]} ${c[1]} ${e[0]} ${e[1]}`;
+  }
+  return d + "Z";
+}
+
+const FLOORS = [
+  { id: "threshold", name: "Red oxide threshold", floor: "#7a2e1f", lines: ["#f6efe2"], dot: "#f6efe2" },
+  { id: "slate", name: "Chalk on slate", floor: "#20262a", lines: ["#efe6c8"], dot: "#efe6c8" },
+  { id: "turmeric", name: "Turmeric wash", floor: "#e0a429", lines: ["#3a1d0f"], dot: "#3a1d0f" },
+  { id: "festival", name: "Festival colours", floor: "#2a1430", lines: ["#f6efe2", "#f2b84b", "#ef7aa0", "#7fd1ac", "#8fb4f4", "#f39a5b"], dot: "#f6efe2" },
+];
+
+const encode = (s) => `${s.n}-${Math.round(s.density * 100)}-${s.symmetric ? "S" : "F"}-${s.seed}`;
+function decode(code) {
+  const m = /^(\d+)-(\d+)-([SF])-(\d+)$/.exec(code.trim().toUpperCase());
+  if (!m) return null;
+  const n = +m[1], d = +m[2];
+  if (n < 3 || n > 13 || n % 2 === 0 || d > 100) return null;
+  return { n, density: d / 100, symmetric: m[3] === "S", seed: +m[4] };
+}
+const newSeed = () => Math.floor(Math.random() * 1e6);
+
+function App() {
+  const [spec, setSpec] = useState({ n: 7, density: 0.42, symmetric: true, seed: 271828 });
+  const [floorId, setFloorId] = useState("threshold");
+  const [msg, setMsg] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [codeInput, setCodeInput] = useState("");
+  const svgRef = useRef(null);
+
+  const floor = FLOORS.find((f) => f.id === floorId);
+  const loops = useMemo(() => trace(spec.n, makeMirrors(spec.n, spec.density, spec.symmetric, spec.seed)), [spec]);
+  const W = 2 * spec.n;
+
+  // Draw each strand like flour pouring from fingers.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const paths = [...svg.querySelectorAll("path.strand")];
+    const anims = paths.map((p) => {
+      const len = p.getTotalLength();
+      p.style.strokeDasharray = `${len}`;
+      if (reduce) { p.style.strokeDashoffset = "0"; return null; }
+      return p.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }],
+        { duration: Math.min(9000, 1400 + len * 18), easing: "cubic-bezier(.45,.05,.4,1)", fill: "forwards" });
+    });
+    return () => anims.forEach((a) => a && a.cancel());
+  }, [loops, floorId]);
+
+  function update(patch) { setMsg(""); setSpec((s) => ({ ...s, ...patch })); }
+
+  function findSikku() {
+    setSearching(true);
+    setMsg("Weaving…");
+    setTimeout(() => {
+      for (let i = 0; i < 4000; i++) {
+        const seed = newSeed();
+        const count = trace(spec.n, makeMirrors(spec.n, spec.density, spec.symmetric, seed)).length;
+        if (count === 1) {
+          setSpec((s) => ({ ...s, seed }));
+          setMsg(`Found one line after ${i + 1} ${i ? "tries" : "try"}.`);
+          setSearching(false);
+          return;
+        }
+      }
+      setMsg("No single line in 4,000 tries. Change the density or size and try again.");
+      setSearching(false);
+    }, 30);
+  }
+
+  function loadCode(e) {
+    e.preventDefault();
+    const s = decode(codeInput);
+    if (!s) { setMsg("That code doesn't look right. It should look like 7-42-S-271828."); return; }
+    setSpec(s); setMsg("Kolam loaded."); setCodeInput("");
+  }
+
+  const one = loops.length === 1;
+
+  return (
+    <div className="wrap">
+      <header>
+        <h1>Sikku Kolam <em>Studio</em></h1>
+        <p className="lede">Every morning across Tamil Nadu, doorsteps get a kolam: a line of rice flour woven around a grid of dots. The hardest kind, sikku, is one unbroken line that never ends. Set the dots and let the line find its way.</p>
+      </header>
+
+      <div className="main">
+        <div className="floor" style={{ background: floor.floor }}>
+          <svg ref={svgRef} viewBox={`-1.2 -1.2 ${W + 2.4} ${W + 2.4}`} role="img"
+               aria-label={`A kolam of ${spec.n} by ${spec.n} dots drawn with ${loops.length} ${one ? "continuous line" : "separate lines"}.`}>
+            <g fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={Math.max(0.16, 0.34 - spec.n * 0.012)}>
+              {loops.map((pts, i) => (
+                <path key={`${spec.seed}-${floorId}-${i}`} className="strand" d={toPath(pts)}
+                      stroke={floor.lines[i % floor.lines.length]} />
+              ))}
+            </g>
+            <g fill={floor.dot}>
+              {Array.from({ length: spec.n * spec.n }, (_, k) => (
+                <circle key={k} cx={2 * (k % spec.n) + 1} cy={2 * Math.floor(k / spec.n) + 1} r={0.17} />
+              ))}
+            </g>
+          </svg>
+          <div className={`badge ${one ? "one" : ""}`}>
+            {one ? "Sikku · one unbroken line" : `${loops.length} separate lines`}
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="field">
+            <label htmlFor="size">Pulli (dots) <b>{spec.n} × {spec.n}</b></label>
+            <input id="size" type="range" min="3" max="13" step="2" value={spec.n} onChange={(e) => update({ n: +e.target.value })} />
+          </div>
+          <div className="field">
+            <label htmlFor="density">Twists <b>{Math.round(spec.density * 100)}%</b></label>
+            <input id="density" type="range" min="0" max="90" value={Math.round(spec.density * 100)} onChange={(e) => update({ density: +e.target.value / 100 })} />
+          </div>
+          <label className="toggle">
+            <input id="sym" type="checkbox" checked={spec.symmetric} onChange={(e) => update({ symmetric: e.target.checked })} />
+            Four-fold symmetry, like a doorstep kolam
+          </label>
+
+          <div className="field">
+            <span className="lbl">Floor</span>
+            <div className="swatches">
+              {FLOORS.map((f) => (
+                <button key={f.id} className="swatch" aria-pressed={f.id === floorId} aria-label={f.name} title={f.name}
+                        style={{ background: f.floor }} onClick={() => setFloorId(f.id)}>
+                  <span style={{ color: f.lines[f.lines.length > 1 ? 1 : 0] }}>✦</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="btns">
+            <button className="big primary" onClick={findSikku} disabled={searching}>
+              {searching ? "Weaving…" : "Find a one-line kolam"}
+            </button>
+            <button className="big" onClick={() => update({ seed: newSeed() })} disabled={searching}>New random kolam</button>
+          </div>
+          <p className="msg" aria-live="polite">{msg}</p>
+
+          <div className="field">
+            <span className="lbl">Kolam code <b style={{ font: "500 .85rem var(--mono)", color: "var(--ink)" }}>{encode(spec)}</b></span>
+            <form className="code" onSubmit={loadCode}>
+              <input id="code" value={codeInput} placeholder="Paste a friend's code" onChange={(e) => setCodeInput(e.target.value)} />
+              <button type="submit">Load</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <dl className="glossary">
+        <div><dt>Pulli</dt><dd>The dots. They're placed first, and the line must curl around every one without touching it.</dd></div>
+        <div><dt>Sikku</dt><dd>"Knot" in Tamil. A kolam drawn as one closed line. The badge turns gold when you get one.</dd></div>
+        <div><dt>How it's drawn</dt><dd>The line runs diagonally between dots and bounces off invisible mirrors. Change the mirrors and you get a new kolam.</dd></div>
+      </dl>
+      <p className="credit">Made by Hariesh · <a href="../">More experiments</a></p>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

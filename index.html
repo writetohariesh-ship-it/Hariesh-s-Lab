@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hariesh's Lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;600&display=swap">
+<style>
+:root { color-scheme: dark; --bg: #1b1411; --panel: #251c17; --ink: #f3e9dc; --muted: #b3a291; --accent: #f2b84b; --line: #3b2d25; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 "Figtree", system-ui, sans-serif; padding: 48px 16px; }
+main { max-width: 720px; margin: 0 auto; display: grid; gap: 28px; }
+h1 { font: 400 clamp(2.2rem, 7vw, 3.2rem)/1.05 "Young Serif", Georgia, serif; margin: 0; }
+p { margin: 0; color: var(--muted); }
+ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+a.card { display: grid; gap: 4px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--ink); text-decoration: none; }
+a.card:hover, a.card:focus-visible { border-color: var(--accent); outline: none; }
+a.card b { font: 400 1.3rem "Young Serif", Georgia, serif; }
+a.card span { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header style="display:grid;gap:8px">
+    <h1>Hariesh's Lab</h1>
+    <p>Small experiments, built fast.</p>
+  </header>
+  <ul>
+    <li><a class="card" href="kolam/"><b>Sikku Kolam Studio</b><span>Generates single-line kolams that weave around a grid of dots.</span></a></li>
+  </ul>
+</main>
+</body>
+</html>
