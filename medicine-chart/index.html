@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amma's Medicine Chart</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&family=Noto+Sans+Tamil:wght@500;700&family=Noto+Sans+Devanagari:wght@500;700&display=swap">
+<style>
+/* Layout: a quiet pharmacy-counter page — the chart is the hero on the left, set like a printed prescription card; a soft editor column sits on the right and drops below on phones */
+:root {
+  color-scheme: light;
+  --bg: #eef3f1;
+  --card: #ffffff;
+  --ink: #15332c;
+  --muted: #55706a;
+  --line: #d3e0dc;
+  --accent: #1f7a63;
+  --accent-soft: #dff1ea;
+  --morning: #fff4d6;
+  --noon: #ffe7dc;
+  --night: #e3e8fb;
+  --before: #ffe3a3;
+  --after: #cdeedd;
+  --danger: #b3261e;
+  --display: "Lexend", "Noto Sans Tamil", "Noto Sans Devanagari", system-ui, sans-serif;
+  --body: "Lexend", "Noto Sans Tamil", "Noto Sans Devanagari", system-ui, -apple-system, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 17px/1.55 var(--body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 26px; }
+.back { justify-self: start; font-size: .9rem; color: var(--muted); text-decoration: none; }
+.back:hover { color: var(--accent); }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+header { display: grid; gap: 8px; }
+h1 { font: 600 clamp(2.1rem, 7vw, 3.4rem)/1.05 var(--display); margin: 0; letter-spacing: -.02em; text-wrap: balance; }
+h1 span { color: var(--accent); }
+.lede { margin: 0; max-width: 60ch; color: var(--muted); }
+.main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 860px) { .main { grid-template-columns: 1fr; } }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 22px; min-width: 0; }
+
+/* The chart: a prescription card */
+.chart { padding: 22px; display: grid; gap: 16px; box-shadow: 0 18px 40px -24px rgba(21, 51, 44, .35); }
+.chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 8px; border-bottom: 2px solid var(--ink); padding-bottom: 12px; }
+.chart-head h2 { font: 600 clamp(1.7rem, 5vw, 2.3rem)/1.1 var(--display); margin: 0; }
+.chart-head small { font-size: .85rem; color: var(--muted); }
+.slot { border-radius: 18px; padding: 14px; display: grid; gap: 10px; }
+.slot-head { display: flex; align-items: center; gap: 12px; }
+.slot-head svg { flex: none; }
+.slot-head h3 { margin: 0; font: 600 1.6rem/1.1 var(--display); }
+.slot-head span { font-size: .9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.med { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 14px; align-items: center; background: var(--card); border-radius: 14px; padding: 10px 14px; box-shadow: 0 1px 0 rgba(21, 51, 44, .08); }
+.med-name { font: 600 1.45rem/1.15 var(--display); overflow-wrap: anywhere; }
+.med-sub { font-size: 1.05rem; color: var(--muted); }
+.food { font: 600 1rem/1.2 var(--body); border-radius: 999px; padding: 7px 14px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.food.before { background: var(--before); }
+.food.after { background: var(--after); }
+.food.any { background: var(--bg); }
+@media (max-width: 480px) { .med { grid-template-columns: 52px minmax(0, 1fr); } .food { grid-column: 1 / -1; justify-self: start; } }
+.none { margin: 0; font-size: 1.05rem; color: var(--muted); }
+.disclaimer { margin: 0; font-size: .85rem; color: var(--muted); }
+
+/* Editor */
+.side { display: grid; gap: 18px; min-width: 0; }
+.editor { padding: 18px; display: grid; gap: 14px; }
+.editor h2 { font: 600 1.25rem var(--display); margin: 0; }
+.field { display: grid; gap: 6px; }
+.field label, .lbl { font-size: .85rem; font-weight: 600; color: var(--muted); }
+input[type=text], select { font: 400 1.05rem var(--body); width: 100%; min-width: 0; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--card); color: var(--ink); }
+input[type=text]:focus, select:focus { border-color: var(--accent); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+.tog { font: 500 .95rem var(--body); background: var(--card); color: var(--ink); border: 1.5px solid var(--line); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+.tog[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.sw { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid #9fb3ad; cursor: pointer; }
+.sw[aria-pressed="true"] { outline: 3px solid var(--accent); outline-offset: 2px; }
+.shapes { display: flex; flex-wrap: wrap; gap: 8px; }
+.shape { background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; padding: 4px 8px; cursor: pointer; display: grid; justify-items: center; font-size: .72rem; color: var(--muted); }
+.shape[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
+.primary { font: 600 1.1rem var(--body); background: var(--accent); color: #fff; border: 0; border-radius: 14px; padding: 13px; cursor: pointer; }
+.primary:hover { filter: brightness(1.08); }
+.btn { font: 500 .95rem var(--body); background: var(--card); color: var(--ink); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.err { margin: 0; color: var(--danger); font-weight: 600; }
+.list { padding: 18px; display: grid; gap: 10px; }
+.item { display: flex; align-items: center; gap: 10px; border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.item b { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+.item .btn { padding: 4px 10px; }
+.example { font-size: .85rem; background: var(--accent-soft); color: var(--ink); border-radius: 999px; padding: 4px 12px; justify-self: start; }
+footer { font-size: .85rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; }
+
+@media print {
+  body { background: #fff; }
+  .back, header, .side, footer, .no-print { display: none !important; }
+  .wrap { padding: 0; max-width: none; }
+  .main { display: block; }
+  .box { box-shadow: none; border: 0; }
+}
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const WORDS = {
+  en: { morning: "Morning", noon: "Afternoon", night: "Night", before: "Before food", after: "After food", any: "Any time", chart: "Medicines", nothing: "Nothing at this time." },
+  ta: { morning: "காலை", noon: "மதியம்", night: "இரவு", before: "உணவுக்கு முன்", after: "உணவுக்கு பின்", any: "எப்போது வேண்டுமானாலும்", chart: "மருந்துகள்", nothing: "இந்த நேரத்தில் மருந்து இல்லை." },
+  hi: { morning: "सुबह", noon: "दोपहर", night: "रात", before: "खाने से पहले", after: "खाने के बाद", any: "कभी भी", chart: "दवाइयाँ", nothing: "इस समय कोई दवा नहीं।" },
+};
+const SLOTS = [
+  { id: "morning", time: "8 am", bg: "var(--morning)" },
+  { id: "noon", time: "1 pm", bg: "var(--noon)" },
+  { id: "night", time: "9 pm", bg: "var(--night)" },
+];
+const COLOURS = ["#ffffff", "#ffd23f", "#ff8fc7", "#ff7a3d", "#6fd3ff", "#b6f26a", "#c9a2ff", "#c8102e"];
+const SHAPES = ["round", "oval", "capsule", "syrup", "drops"];
+
+const EXAMPLES = [
+  { id: 1, name: "BP tablet", note: "for blood pressure", dose: "1 tablet", times: ["morning"], food: "after", colour: "#ffffff", shape: "round" },
+  { id: 2, name: "Sugar tablet", note: "for diabetes", dose: "1 tablet", times: ["morning", "night"], food: "before", colour: "#ffd23f", shape: "oval" },
+  { id: 3, name: "Vitamin D", note: "", dose: "1 capsule", times: ["noon"], food: "after", colour: "#ff7a3d", shape: "capsule" },
+  { id: 4, name: "Calcium", note: "for bones", dose: "½ tablet", times: ["night"], food: "after", colour: "#6fd3ff", shape: "round" },
+];
+
+function Pill({ shape, colour, size = 56 }) {
+  const s = { stroke: "#15332c", strokeWidth: 2.5 };
+  return (
+    <svg width={size} height={size} viewBox="0 0 60 60" aria-hidden="true">
+      {shape === "round" && <><circle cx="30" cy="30" r="20" fill={colour} {...s} /><line x1="14" y1="30" x2="46" y2="30" stroke="#15332c" strokeWidth="2.5" /></>}
+      {shape === "oval" && <><ellipse cx="30" cy="30" rx="24" ry="15" fill={colour} {...s} /><line x1="10" y1="30" x2="50" y2="30" stroke="#15332c" strokeWidth="2.5" /></>}
+      {shape === "capsule" && <g transform="rotate(-30 30 30)"><path d="M18 20 h12 v20 h-12 a10 10 0 0 1 0 -20 z" fill={colour} {...s} /><path d="M30 20 h12 a10 10 0 0 1 0 20 h-12 z" fill="#ffffff" {...s} /></g>}
+      {shape === "syrup" && <><path d="M8 34 q22 14 44 0 l-6 -4 q-16 8 -32 0 z" fill="#d9d9d9" {...s} /><ellipse cx="30" cy="30" rx="16" ry="5" fill={colour} {...s} /><rect x="44" y="12" width="6" height="20" rx="3" transform="rotate(35 47 22)" fill="#d9d9d9" {...s} /></>}
+      {shape === "drops" && <><path d="M30 8 C 40 24, 44 30, 44 38 a14 14 0 0 1 -28 0 C 16 30, 20 24, 30 8 z" fill={colour} {...s} /><circle cx="25" cy="38" r="3" fill="#fff" /></>}
+    </svg>
+  );
+}
+
+function SlotIcon({ id }) {
+  if (id === "morning") return <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="26" r="9" fill="#f5b62e" stroke="#15332c" strokeWidth="2.5" />{[0, 45, 90, 135, 180].map((a) => <line key={a} x1="22" y1="26" x2={22 + Math.cos((180 + a) * Math.PI / 180) * 17} y2={26 + Math.sin((180 + a) * Math.PI / 180) * 17} stroke="#15332c" strokeWidth="2.5" strokeLinecap="round" />)}<line x1="2" y1="36" x2="42" y2="36" stroke="#15332c" strokeWidth="2.5" /></svg>;
+  if (id === "noon") return <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">{[0, 45, 90, 135, 180, 225, 270, 315].map((a) => <line key={a} x1={22 + Math.cos(a * Math.PI / 180) * 13} y1={22 + Math.sin(a * Math.PI / 180) * 13} x2={22 + Math.cos(a * Math.PI / 180) * 19} y2={22 + Math.sin(a * Math.PI / 180) * 19} stroke="#15332c" strokeWidth="2.5" strokeLinecap="round" />)}<circle cx="22" cy="22" r="9" fill="#ef8a5f" stroke="#15332c" strokeWidth="2.5" /></svg>;
+  return <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><path d="M28 6 a16 16 0 1 0 10 26 a13 13 0 1 1 -10 -26 z" fill="#4a5fc9" stroke="#15332c" strokeWidth="2.5" strokeLinejoin="round" /><circle cx="34" cy="10" r="2" fill="#15332c" /></svg>;
+}
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem("med-chart") || "null");
+    if (s && Array.isArray(s.meds)) return { ...s, example: false };
+  } catch {}
+  return { who: "Amma", lang: "en", meds: EXAMPLES, example: true };
+}
+const blank = () => ({ id: null, name: "", note: "", dose: "1 tablet", times: ["morning"], food: "after", colour: "#ffffff", shape: "round" });
+
+function App() {
+  const [state, setState] = useState(load);
+  const [form, setForm] = useState(blank);
+  const [err, setErr] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const { who, lang, meds, example } = state;
+  const W = WORDS[lang];
+  const canPrint = (() => { try { return window.self === window.top; } catch { return false; } })();
+
+  useEffect(() => {
+    if (example) return;
+    try { localStorage.setItem("med-chart", JSON.stringify({ who, lang, meds })); } catch {}
+  }, [who, lang, meds, example]);
+
+  const update = (patch) => setState((s) => ({ ...s, ...patch }));
+  const setF = (patch) => { setErr(""); setForm((f) => ({ ...f, ...patch })); };
+  const toggleTime = (t) => setF({ times: form.times.includes(t) ? form.times.filter((x) => x !== t) : [...form.times, t] });
+
+  function save(e) {
+    e.preventDefault();
+    if (!form.name.trim()) { setErr("Add the medicine's name."); return; }
+    if (!form.times.length) { setErr("Pick at least one time of day."); return; }
+    const clean = { ...form, name: form.name.trim(), note: form.note.trim(), dose: form.dose.trim() };
+    const base = example ? [] : meds;
+    const next = form.id && !example ? base.map((m) => (m.id === form.id ? clean : m)) : [...base, { ...clean, id: Date.now() }];
+    setState((s) => ({ ...s, meds: next, example: false }));
+    setForm(blank());
+  }
+  function remove(id) { setState((s) => ({ ...s, meds: s.meds.filter((m) => m.id !== id) })); if (form.id === id) setForm(blank()); }
+  function edit(m) { setErr(""); setForm({ ...m }); }
+  function clearAll() { try { localStorage.removeItem("med-chart"); } catch {} setState({ who, lang, meds: [], example: false }); setForm(blank()); }
+
+  const updated = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+
+  return (
+    <div className="wrap">
+      <a className="back" href="../">← Hariesh's Lab</a>
+      <header>
+        <h1>Medicine <span>Chart</span></h1>
+        <p className="lede">Which tablet, when, before or after food? Add the medicines once and get a big, clear chart for the fridge. Screenshot it and send it to the family group.</p>
+      </header>
+
+      <div className="main">
+        <section className="box chart" aria-label="Medicine chart">
+          <div className="chart-head">
+            <h2>{!who ? W.chart : lang === "en" ? `${who}'s ${W.chart}` : `${who} · ${W.chart}`}</h2>
+            <small>Updated {updated}</small>
+          </div>
+          {example && <span className="example no-print">Example chart. Add your first medicine to replace it.</span>}
+          {SLOTS.map((slot) => {
+            const list = meds.filter((m) => m.times.includes(slot.id));
+            return (
+              <div key={slot.id} className="slot" style={{ background: slot.bg }}>
+                <div className="slot-head"><SlotIcon id={slot.id} /><div><h3>{W[slot.id]}</h3><span>{slot.time}</span></div></div>
+                {list.length === 0 ? <p className="none">{W.nothing}</p> : list.map((m) => (
+                  <div className="med" key={m.id}>
+                    <Pill shape={m.shape} colour={m.colour} />
+                    <div style={{ minWidth: 0 }}>
+                      <div className="med-name">{m.name}</div>
+                      <div className="med-sub">{[m.dose, m.note].filter(Boolean).join(" · ")}</div>
+                    </div>
+                    <div className={`food ${m.food}`}>{m.food === "before" ? "🍽️ " : m.food === "after" ? "✓ " : ""}{W[m.food]}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+          <p className="disclaimer">This chart only shows what was entered. Check names and doses with the doctor or pharmacist.</p>
+        </section>
+
+        <div className="side">
+          <form className="box editor" onSubmit={save}>
+            <h2>{form.id && !example ? "Edit medicine" : "Add a medicine"}</h2>
+            <div className="field"><label htmlFor="name">Medicine name</label><input id="name" type="text" value={form.name} maxLength={40} placeholder="As written on the strip" onChange={(e) => setF({ name: e.target.value })} /></div>
+            <div className="two">
+              <div className="field"><label htmlFor="dose">How much</label><input id="dose" type="text" value={form.dose} maxLength={24} onChange={(e) => setF({ dose: e.target.value })} /></div>
+              <div className="field"><label htmlFor="note">What for (optional)</label><input id="note" type="text" value={form.note} maxLength={30} placeholder="for BP" onChange={(e) => setF({ note: e.target.value })} /></div>
+            </div>
+            <div className="field"><span className="lbl">When</span>
+              <div className="toggles">{SLOTS.map((s) => <button type="button" key={s.id} className="tog" aria-pressed={form.times.includes(s.id)} onClick={() => toggleTime(s.id)}>{WORDS.en[s.id]}</button>)}</div>
+            </div>
+            <div className="field"><span className="lbl">Food</span>
+              <div className="toggles">{["before", "after", "any"].map((f) => <button type="button" key={f} className="tog" aria-pressed={form.food === f} onClick={() => setF({ food: f })}>{WORDS.en[f]}</button>)}</div>
+            </div>
+            <div className="field"><span className="lbl">Looks like</span>
+              <div className="shapes">{SHAPES.map((sh) => <button type="button" key={sh} className="shape" aria-pressed={form.shape === sh} onClick={() => setF({ shape: sh })}><Pill shape={sh} colour={form.colour} size={36} />{sh}</button>)}</div>
+              <div className="swatches" style={{ marginTop: 6 }}>{COLOURS.map((c) => <button type="button" key={c} className="sw" style={{ background: c }} aria-label={`Colour ${c}`} aria-pressed={form.colour === c} onClick={() => setF({ colour: c })} />)}</div>
+            </div>
+            {err && <p className="err" role="alert">{err}</p>}
+            <button className="primary" type="submit">{form.id && !example ? "Save changes" : "Add to chart"}</button>
+            {form.id && !example && <button type="button" className="btn" onClick={() => setForm(blank())}>Cancel edit</button>}
+          </form>
+
+          <div className="box editor">
+            <h2>Chart settings</h2>
+            <div className="field"><label htmlFor="who">Whose chart?</label><input id="who" type="text" value={who} maxLength={20} onChange={(e) => update({ who: e.target.value })} /></div>
+            <div className="field"><label htmlFor="lang">Chart language</label>
+              <select id="lang" value={lang} onChange={(e) => update({ lang: e.target.value })}>
+                <option value="en">English</option><option value="ta">தமிழ் (Tamil)</option><option value="hi">हिन्दी (Hindi)</option>
+              </select>
+            </div>
+            {canPrint && <button type="button" className="btn" onClick={() => window.print()}>Print for the fridge</button>}
+          </div>
+
+          {!example && meds.length > 0 && (
+            <div className="box list">
+              <div className="lbl">On the chart ({meds.length})</div>
+              {meds.map((m) => (
+                <div className="item" key={m.id}>
+                  <Pill shape={m.shape} colour={m.colour} size={32} />
+                  <b>{m.name}</b>
+                  <button type="button" className="btn" onClick={() => edit(m)}>Edit</button>
+                  <button type="button" className="btn" onClick={() => remove(m.id)}>Remove</button>
+                </div>
+              ))}
+              {confirming
+                ? <div className="toggles"><button type="button" className="btn" onClick={() => { clearAll(); setConfirming(false); }}>Yes, clear the chart</button><button type="button" className="btn" onClick={() => setConfirming(false)}>Keep it</button></div>
+                : <button type="button" className="btn" onClick={() => setConfirming(true)}>Start a new chart</button>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <footer><span>Made by Hariesh</span><span>Saved only in this browser · Built with React + Claude</span></footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
