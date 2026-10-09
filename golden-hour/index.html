@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Golden Hour</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: asphalt-dark single column, phone-first — call buttons always on top, one big step card at a time like a road sign, then the rights panel */
+:root {
+  color-scheme: dark;
+  --asphalt: #1c1d1f;
+  --asphalt-2: #26282b;
+  --line: #3a3c40;
+  --ink: #f5f3ee;
+  --muted: #b4b2ab;
+  --amber: #ffc21a;
+  --amber-ink: #1a1400;
+  --red: #e5322d;
+  --green: #3ccf7a;
+  --display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+  --body: "Barlow", system-ui, -apple-system, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--asphalt); color: var(--ink); font: 400 18px/1.5 var(--body); }
+.wrap { max-width: 720px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 56px; display: grid; gap: 20px; }
+.back { justify-self: start; font-size: .9rem; color: var(--muted); text-decoration: none; }
+.back:hover { color: var(--amber); }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+.lane { height: 6px; background: repeating-linear-gradient(90deg, var(--amber) 0 34px, transparent 34px 56px); opacity: .9; }
+header { display: grid; gap: 6px; }
+h1 { font: 800 clamp(2.6rem, 11vw, 4rem)/.95 var(--display); margin: 0; text-transform: uppercase; letter-spacing: .01em; }
+h1 span { color: var(--amber); }
+.lede { margin: 0; color: var(--muted); font-size: 1.05rem; }
+
+.calls { display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px; }
+.call { display: grid; gap: 2px; text-decoration: none; color: #fff; background: var(--red); border-radius: 18px; padding: 14px 18px; min-height: 96px; align-content: center; }
+.call.amb { background: var(--asphalt-2); border: 3px solid var(--red); }
+.call b { font: 800 2.6rem/1 var(--display); letter-spacing: .02em; }
+.call span { font: 600 1rem var(--body); }
+@media (max-width: 420px) { .call b { font-size: 2.2rem; } }
+
+.clock { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--asphalt-2); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; }
+.clock .t { font: 700 1.9rem/1 var(--display); font-variant-numeric: tabular-nums; color: var(--amber); }
+.clock small { display: block; color: var(--muted); font-size: .85rem; }
+.ghost { font: 600 1rem var(--body); background: transparent; color: var(--ink); border: 2px solid var(--line); border-radius: 12px; padding: 8px 14px; cursor: pointer; }
+.ghost:hover { border-color: var(--amber); }
+
+.sign { background: var(--amber); color: var(--amber-ink); border-radius: 22px; padding: 20px; display: grid; gap: 14px; position: relative; overflow: hidden; }
+.sign::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 10px; background: repeating-linear-gradient(-45deg, var(--amber-ink) 0 12px, var(--amber) 12px 24px); }
+.step-no { font: 700 1rem var(--display); letter-spacing: .12em; text-transform: uppercase; margin-top: 6px; }
+.sign h2 { font: 800 clamp(2rem, 8vw, 2.8rem)/1 var(--display); margin: 0; text-transform: uppercase; text-wrap: balance; }
+.sign ul { margin: 0; padding-left: 22px; display: grid; gap: 8px; font: 500 1.2rem/1.35 var(--body); }
+.sign .icon { width: 64px; height: 64px; }
+.dashes { display: flex; gap: 6px; }
+.dashes i { flex: 1; height: 8px; border-radius: 4px; background: rgba(26, 20, 0, .2); }
+.dashes i.on { background: var(--amber-ink); }
+.nav { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.nav button { font: 800 1.5rem var(--display); text-transform: uppercase; border-radius: 16px; padding: 16px 10px; cursor: pointer; border: 3px solid var(--amber-ink); }
+.nav .prev { background: transparent; color: var(--amber-ink); }
+.nav .next { background: var(--amber-ink); color: var(--amber); }
+.nav button:disabled { opacity: .35; cursor: not-allowed; }
+
+.cpr { background: var(--amber-ink); color: var(--amber); border-radius: 16px; padding: 14px; display: grid; gap: 10px; justify-items: center; text-align: center; }
+.beat { width: 92px; height: 92px; border-radius: 50%; background: var(--red); display: grid; place-items: center; font: 800 1.4rem var(--display); color: #fff; }
+.beat.on { animation: pump var(--period, 545ms) infinite; }
+@keyframes pump { 0% { transform: scale(1.18); } 30% { transform: scale(.9); } 100% { transform: scale(1); } }
+.cpr button { font: 700 1.05rem var(--body); border-radius: 12px; padding: 8px 14px; background: var(--amber); color: var(--amber-ink); border: 0; cursor: pointer; }
+.cpr p { margin: 0; font-size: .95rem; color: #ffe08a; }
+
+.all { display: grid; gap: 10px; }
+.all details { background: var(--asphalt-2); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.all summary { font: 700 1.3rem var(--display); text-transform: uppercase; cursor: pointer; }
+.all ul { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 4px; }
+
+.rights { background: var(--asphalt-2); border: 2px solid var(--green); border-radius: 22px; padding: 18px; display: grid; gap: 12px; }
+.rights h2 { font: 800 2rem/1 var(--display); text-transform: uppercase; margin: 0; color: var(--green); }
+.rights p { margin: 0; color: var(--muted); }
+.rights ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.rights li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; font-size: 1.08rem; }
+.rights li::before { content: "✓"; font: 800 1.3rem var(--display); color: var(--green); }
+.src { font-size: .85rem; color: var(--muted); }
+.src a { color: var(--amber); }
+footer { font-size: .85rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; }
+@media (prefers-reduced-motion: reduce) { .beat.on { animation: none; } }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const ink = "#1a1400";
+const ICONS = {
+  safe: <svg className="icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6 L60 56 H4 Z" fill="none" stroke={ink} strokeWidth="5" strokeLinejoin="round" /><path d="M32 24 v16" stroke={ink} strokeWidth="5" strokeLinecap="round" /><circle cx="32" cy="48" r="3.5" fill={ink} /></svg>,
+  call: <svg className="icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M18 8 l10 12 -6 6 c4 8 8 12 16 16 l6 -6 12 10 -6 10 C28 56 8 36 8 14 Z" fill={ink} /></svg>,
+  still: <svg className="icon" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="14" r="8" fill={ink} /><rect x="22" y="26" width="20" height="30" rx="6" fill={ink} /><path d="M8 34 h10 M46 34 h10" stroke={ink} strokeWidth="5" strokeLinecap="round" /></svg>,
+  bleed: <svg className="icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6 C 42 22, 48 30, 48 40 a16 16 0 0 1 -32 0 C 16 30, 22 22, 32 6 Z" fill={ink} /><path d="M24 40 h16" stroke="#ffc21a" strokeWidth="5" strokeLinecap="round" /></svg>,
+  breath: <svg className="icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 54 C 10 40, 6 26, 14 16 c 6 -7 14 -4 18 3 c 4 -7 12 -10 18 -3 c 8 10 4 24 -18 38 Z" fill={ink} /><path d="M18 30 h8 l4 -8 4 16 4 -8 h8" stroke="#ffc21a" strokeWidth="4" fill="none" strokeLinejoin="round" /></svg>,
+  dont: <svg className="icon" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="25" fill="none" stroke={ink} strokeWidth="6" /><path d="M14 14 L50 50" stroke={ink} strokeWidth="6" /></svg>,
+  hosp: <svg className="icon" viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="6" width="52" height="52" rx="10" fill={ink} /><path d="M32 16 v32 M16 32 h32" stroke="#ffc21a" strokeWidth="8" /></svg>,
+};
+
+const STEPS = [
+  { id: "safe", title: "Make it safe first", points: ["Stop your vehicle and switch on the hazard lights.", "Watch for traffic before you step onto the road.", "Ask others to slow down or redirect vehicles."] },
+  { id: "call", title: "Call for help", points: ["Call 112 for police, fire or ambulance.", "Or call 108 for an ambulance in most states.", "Say the exact place: road name, landmark, direction."] },
+  { id: "still", title: "Talk. Don't move them.", points: ["Tell them help is coming. Keep them calm.", "Do not move them unless there is fire, traffic or other danger.", "If you must move them, keep the head, neck and back in one line."] },
+  { id: "bleed", title: "Stop the bleeding", points: ["Press a clean cloth, dupatta or handkerchief hard on the wound.", "Keep pressing. Add more cloth on top if it soaks through.", "If they're awake, ask them to hold the cloth too."] },
+  { id: "breath", title: "Check breathing", points: ["Look at the chest for movement for up to 10 seconds.", "Breathing but not awake: gently roll them onto their side, keeping the head and neck in line.", "Not breathing: push hard and fast in the centre of the chest, 100 to 120 times a minute, until help arrives."], cpr: true },
+  { id: "dont", title: "Don't do these", points: ["Don't take off a helmet unless they can't breathe or are vomiting.", "Don't give water or food.", "Don't pull out anything stuck in a wound.", "Don't drag or lift them roughly."] },
+  { id: "hosp", title: "Hand over, then go", points: ["Tell the ambulance team what happened and when.", "You can go with them to the hospital, or leave once help arrives.", "You don't have to pay, sign forms or give your name."] },
+];
+
+const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+
+function Compressions() {
+  const [on, setOn] = useState(false);
+  const [count, setCount] = useState(0);
+  const ctx = useRef(null);
+  useEffect(() => {
+    if (!on) return;
+    const id = setInterval(() => {
+      setCount((c) => c + 1);
+      try {
+        const a = ctx.current; if (!a) return;
+        const o = a.createOscillator(), g = a.createGain();
+        o.frequency.value = 880; g.gain.value = 0.12;
+        o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + 0.06);
+      } catch {}
+    }, 545);
+    return () => clearInterval(id);
+  }, [on]);
+  function toggle() {
+    if (!on) { try { ctx.current = ctx.current || new (window.AudioContext || window.webkitAudioContext)(); ctx.current.resume?.(); } catch {} setCount(0); }
+    setOn((v) => !v);
+  }
+  return (
+    <div className="cpr">
+      <div className={`beat ${on ? "on" : ""}`} aria-hidden="true">{on ? count : "PUSH"}</div>
+      <button onClick={toggle}>{on ? "Stop the beat" : "Start the push beat (110 a minute)"}</button>
+      <p>Push down with the heel of your hand, about 5 cm, on every beat. Don't stop until help takes over.</p>
+    </div>
+  );
+}
+
+function App() {
+  const [i, setI] = useState(0);
+  const [start, setStart] = useState(() => Date.now());
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
+  const step = STEPS[i];
+  const elapsed = Math.floor((now - start) / 1000);
+
+  return (
+    <div className="wrap">
+      <a className="back" href="../">← Hariesh's Lab</a>
+      <header>
+        <h1>Golden <span>Hour</span></h1>
+        <p className="lede">Someone hurt on the road? The first hour can save their life. Follow one step at a time.</p>
+      </header>
+
+      <div className="calls">
+        <a className="call" href="tel:112"><b>112</b><span>Emergency: police, fire, ambulance</span></a>
+        <a className="call amb" href="tel:108"><b>108</b><span>Ambulance (most states)</span></a>
+      </div>
+
+      <div className="clock">
+        <div><small>Time since you started helping</small><div className="t">{fmt(elapsed)}</div></div>
+        <button className="ghost" onClick={() => { setStart(Date.now()); setNow(Date.now()); }}>Reset</button>
+      </div>
+
+      <div className="lane" aria-hidden="true" />
+
+      <section className="sign" aria-live="polite" aria-label={`Step ${i + 1} of ${STEPS.length}`}>
+        <div className="step-no">Step {i + 1} of {STEPS.length}</div>
+        <div className="dashes" aria-hidden="true">{STEPS.map((s, k) => <i key={s.id} className={k <= i ? "on" : ""} />)}</div>
+        {ICONS[step.id]}
+        <h2>{step.title}</h2>
+        <ul>{step.points.map((p) => <li key={p}>{p}</li>)}</ul>
+        {step.cpr && <Compressions key={i} />}
+        <div className="nav">
+          <button className="prev" onClick={() => setI((v) => Math.max(0, v - 1))} disabled={i === 0}>Back</button>
+          <button className="next" onClick={() => setI((v) => Math.min(STEPS.length - 1, v + 1))} disabled={i === STEPS.length - 1}>
+            {i === STEPS.length - 1 ? "Done" : "Next step"}
+          </button>
+        </div>
+      </section>
+
+      <section className="all" aria-label="All steps">
+        {STEPS.map((s, k) => (
+          <details key={s.id}>
+            <summary>{k + 1}. {s.title}</summary>
+            <ul>{s.points.map((p) => <li key={p}>{p}</li>)}</ul>
+          </details>
+        ))}
+      </section>
+
+      <section className="rights">
+        <h2>The law protects you</h2>
+        <p>Under Section 134A of the Motor Vehicles Act, a Good Samaritan who helps in good faith is protected.</p>
+        <ul>
+          <li>You can't be held liable, civilly or criminally, for helping in good faith.</li>
+          <li>No one can force you to give your name, phone number or address.</li>
+          <li>You don't have to be a witness unless you choose to.</li>
+          <li>The hospital can't make you pay or fill admission forms, and can't stop you from leaving.</li>
+          <li>Police must treat you with respect and let you go once you've reported the accident.</li>
+        </ul>
+        <p className="src">Source: <a href="https://www.livelaw.in/news-updates/centre-amends-motor-vehicles-rules-for-protection-of-good-samaritans-163752" target="_blank" rel="noopener">Good Samaritan rules notified by the Centre (LiveLaw)</a>. This page gives first-aid basics, not medical training.</p>
+      </section>
+
+      <footer><span>Made by Hariesh</span><span>Built with React + Claude</span></footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
