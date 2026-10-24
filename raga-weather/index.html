@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raga Weather</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#f6efe4;--muted:rgba(246,239,228,.62);--glass:rgba(10,10,20,.38);--line:rgba(255,255,255,.14)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#0b0d18;color:var(--ink);font-family:Inter,system-ui,sans-serif;overflow:hidden}
+  canvas{position:fixed;inset:0;width:100%;height:100%}
+  .ui{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:24px;pointer-events:none}
+  .ui > *{pointer-events:auto}
+  .top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start}
+  h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:clamp(28px,4vw,44px);letter-spacing:-.01em;line-height:1}
+  h1 span{font-style:italic;font-weight:500;opacity:.75}
+  .tag{color:var(--muted);font-size:13px;margin-top:6px}
+  form{display:flex;width:fit-content;margin-left:auto;gap:6px;background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:999px;padding:5px}
+  input{background:none;border:0;color:var(--ink);font:500 14px Inter;padding:8px 12px;width:170px;outline:none}
+  input::placeholder{color:var(--muted)}
+  button{font:600 13px Inter;border:0;border-radius:999px;padding:9px 16px;cursor:pointer;background:var(--ink);color:#111;transition:.15s}
+  button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  button:hover{transform:translateY(-1px)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;justify-content:flex-end}
+  .chips button{background:var(--glass);color:var(--ink);border:1px solid var(--line);backdrop-filter:blur(10px);font-weight:500;padding:6px 12px}
+  .card{align-self:flex-start;max-width:440px;background:var(--glass);backdrop-filter:blur(18px);border:1px solid var(--line);border-radius:22px;padding:22px 24px}
+  .city{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .raga{font-family:'Cormorant Garamond',serif;font-size:clamp(34px,5vw,56px);overflow-wrap:anywhere;line-height:1;margin:6px 0 2px;font-weight:600}
+  .scale{font-size:13px;color:var(--muted);letter-spacing:.05em}
+  .why{font-size:14px;line-height:1.55;margin:14px 0;color:rgba(246,239,228,.85)}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;border-top:1px solid var(--line);padding-top:14px}
+  .stats div{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  .stats b{display:block;color:var(--ink);font-size:17px;font-weight:600;letter-spacing:0;text-transform:none;margin-top:3px}
+  .row{display:flex;gap:8px;margin-top:16px;align-items:center}
+  .note{font-size:12px;color:var(--muted)}
+  .big-play{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:96px;height:96px;border-radius:50%;font-size:28px;display:grid;place-items:center;box-shadow:0 0 0 12px rgba(255,255,255,.08),0 0 0 28px rgba(255,255,255,.04)}
+  .hidden{display:none!important}
+  .err{color:#ffb4a2;font-size:12px;margin-top:6px;text-align:right}
+  @media (max-width:600px){.ui{padding:16px}.stats{grid-template-columns:repeat(2,1fr)}input{width:120px}.chips{justify-content:flex-start}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="ui">
+  <div class="top">
+    <div><h1>Raga <span>Weather</span></h1><p class="tag">The sky right now, played as music.</p></div>
+    <div>
+      <form id="f"><input id="q" placeholder="Any city…" autocomplete="off"><button>Listen</button></form>
+      <div class="chips" id="chips"></div>
+      <div class="err" id="err"></div>
+    </div>
+  </div>
+  <div class="card hidden" id="card">
+    <div class="city" id="city">—</div>
+    <div class="raga" id="raga">—</div>
+    <div class="scale" id="scale"></div>
+    <p class="why" id="why"></p>
+    <div class="stats">
+      <div>Sky<b id="sky">—</b></div><div>Temp<b id="temp">—</b></div><div>Wind<b id="wind">—</b></div><div>Humidity<b id="hum">—</b></div>
+    </div>
+    <div class="row"><button id="toggle">Pause</button><span class="note">Warmer air = brighter tone · stronger wind = faster phrases · humidity = more echo</span></div>
+  </div>
+</div>
+<button class="big-play" id="play" aria-label="Play">▶</button>
+
+<script>
+// ---------- raga palette (mood-inspired mapping, not a strict prescription) ----------
+const RAGAS = {
+  amritavarshini:{name:'Amritavarshini', notes:[0,4,6,7,11], sargam:'Sa Ga₃ Ma₂ Pa Ni₃', why:'Long associated with rain in Carnatic lore — legend says Muthuswami Dikshitar sang it to bring showers. Fitting for a wet sky.', pal:['#1b2a4a','#3e6a9a','#9fd3ff']},
+  megh:{name:'Megh', notes:[0,2,5,7,10], sargam:'Sa Re Ma Pa Ni₂', why:'The raga of monsoon clouds in the Hindustani tradition — heavy, slow, and rumbling. Chosen for thunder.', pal:['#14121f','#433a6b','#c9b8ff']},
+  mohanam:{name:'Mohanam', notes:[0,2,4,7,9], sargam:'Sa Re₂ Ga₃ Pa Da₂', why:'Five bright, open notes — sunny and uncomplicated, like a clear day.', pal:['#ff9d4d','#ffd36e','#fff4cf']},
+  bhupalam:{name:'Bhupalam', notes:[0,1,4,7,8], sargam:'Sa Ri₁ Ga₃ Pa Da₁', why:'A traditional early-morning raga — soft and waking. Chosen because the sun is only just up.', pal:['#f08a7e','#f7c59f','#fde9d9']},
+  hamsadhwani:{name:'Hamsadhwani', notes:[0,2,4,7,11], sargam:'Sa Re₂ Ga₃ Pa Ni₃', why:'Light and auspicious, often sung at the start of a concert. For a fine, partly-clouded afternoon.', pal:['#6fb7c9','#b9e3d4','#fff6dc']},
+  hindolam:{name:'Hindolam', notes:[0,3,5,8,10], sargam:'Sa Ga₂ Ma₁ Da₁ Ni₂', why:'Deep, swaying and a little grey — good company for an overcast sky.', pal:['#2e3440','#5e6b7c','#c4ccd6']},
+  revati:{name:'Revati', notes:[0,1,5,7,10], sargam:'Sa Ri₁ Ma₁ Pa Ni₂', why:'Meditative and hazy, with a hushed quality that suits fog and mist.', pal:['#3a3f47','#8b939c','#e3e6e8']},
+  neelambari:{name:'Neelambari', notes:[0,2,4,5,7,9,11], sargam:'Sa Re₂ Ga₃ Ma₁ Pa Da₂ Ni₃', why:'The classic lullaby raga. Clear night, sleeping city.', pal:['#070b1f','#1d2a5c','#c6d4ff']},
+  shivaranjani:{name:'Shivaranjani', notes:[0,2,3,7,9], sargam:'Sa Re₂ Ga₂ Pa Da₂', why:'Plaintive and cool — for cold, snowy air.', pal:['#cfdbe8','#8aa4c2','#ffffff']},
+};
+const WMO = c => c===0?'Clear':c<=2?'Partly cloudy':c===3?'Overcast':c<=48?'Fog':c<=57?'Drizzle':c<=67?'Rain':c<=77?'Snow':c<=82?'Showers':c<=86?'Snow showers':'Thunder';
+function pickRaga(w){
+  const c=w.code, h=w.hour;
+  if (c>=95) return 'megh';
+  if ((c>=51&&c<=67)||(c>=80&&c<=82)) return 'amritavarshini';
+  if ((c>=71&&c<=77)||c===85||c===86) return 'shivaranjani';
+  if (c===45||c===48) return 'revati';
+  if (!w.day) return 'neelambari';
+  if (h>=5 && h<8) return 'bhupalam';
+  if (c===3) return 'hindolam';
+  if (c===1||c===2) return 'hamsadhwani';
+  return 'mohanam';
+}
+
+// ---------- weather ----------
+const PRESETS=['Chennai','Bengaluru','Mumbai','Cherrapunji','London','Reykjavik','Tokyo'];
+const chips=document.getElementById('chips');
+PRESETS.forEach(p=>{const b=document.createElement('button');b.type='button';b.textContent=p;b.onclick=()=>load(p);chips.appendChild(b);});
+document.getElementById('f').onsubmit=e=>{e.preventDefault();const v=document.getElementById('q').value.trim();if(v)load(v);};
+
+let W_ = null;
+async function load(name){
+  const err=document.getElementById('err'); err.textContent='Looking up the sky…';
+  try{
+    const g=await (await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=1`)).json();
+    if(!g.results||!g.results.length) throw new Error('City not found');
+    const p=g.results[0];
+    const d=await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.latitude}&longitude=${p.longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,is_day,cloud_cover&timezone=auto`)).json();
+    const cur=d.current;
+    apply({city:`${p.name}${p.country?', '+p.country:''}`, temp:cur.temperature_2m, hum:cur.relative_humidity_2m, wind:cur.wind_speed_10m, code:cur.weather_code, day:!!cur.is_day, cloud:cur.cloud_cover, hour:parseInt(cur.time.slice(11,13))});
+    err.textContent='';
+  }catch(e){
+    err.textContent = (e.message==='City not found'?'Couldn’t find that city.':'Weather service unreachable — playing a sample sky.');
+    if(e.message!=='City not found') apply({city:name+' (sample)',temp:27,hum:82,wind:14,code:63,day:true,cloud:90,hour:16});
+  }
+}
+function apply(w){
+  W_=w; const key=pickRaga(w), r=RAGAS[key]; w.raga=r;
+  document.getElementById('card').classList.remove('hidden');
+  document.getElementById('city').textContent=w.city+' · local '+String(w.hour).padStart(2,'0')+':00';
+  document.getElementById('raga').textContent=r.name;
+  document.getElementById('scale').textContent=r.sargam;
+  document.getElementById('why').textContent=r.why;
+  document.getElementById('sky').textContent=WMO(w.code);
+  document.getElementById('temp').textContent=Math.round(w.temp)+'°C';
+  document.getElementById('wind').textContent=Math.round(w.wind)+' km/h';
+  document.getElementById('hum').textContent=w.hum+'%';
+  setupScene(w); if(audioOn) retune(w);
+}
+
+// ---------- audio engine ----------
+let A, master, filt, wet, dry, conv, audioOn=false, playing=false, nextNote=0, nextDrone=0, idx=2;
+function impulse(sec){
+  const len=A.sampleRate*sec, b=A.createBuffer(2,len,A.sampleRate);
+  for(let ch=0;ch<2;ch++){const d=b.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.4);}
+  return b;
+}
+function initAudio(){
+  A=new (window.AudioContext||window.webkitAudioContext)();
+  master=A.createGain(); master.gain.value=.0001; master.connect(A.destination);
+  filt=A.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=2400; filt.Q.value=.6;
+  conv=A.createConvolver(); conv.buffer=impulse(4.5);
+  wet=A.createGain(); dry=A.createGain();
+  filt.connect(dry).connect(master); filt.connect(conv).connect(wet).connect(master);
+  audioOn=true;
+}
+function retune(w){
+  const t=A.currentTime;
+  filt.frequency.setTargetAtTime(700+Math.max(0,Math.min(40,w.temp+5))*90, t, .8); // warmer = brighter
+  wet.gain.setTargetAtTime(.25+w.hum/100*.9, t, .8);
+  dry.gain.setTargetAtTime(.8, t, .8);
+}
+const SA = 146.83; // D3 as Sa — comfortable male/female middle
+const hz = semi => SA*Math.pow(2,semi/12);
+function pluck(f, when, dur, vol, bright=1){
+  const o=A.createOscillator(), o2=A.createOscillator(), g=A.createGain(), lp=A.createBiquadFilter();
+  o.type='sawtooth'; o2.type='triangle'; o.frequency.value=f; o2.frequency.value=f*1.003;
+  lp.type='lowpass'; lp.frequency.setValueAtTime(f*8*bright,when); lp.frequency.exponentialRampToValueAtTime(f*1.5,when+dur);
+  g.gain.setValueAtTime(0,when); g.gain.linearRampToValueAtTime(vol,when+.01); g.gain.exponentialRampToValueAtTime(.0001,when+dur);
+  o.connect(lp); o2.connect(lp); lp.connect(g).connect(filt);
+  o.start(when); o2.start(when); o.stop(when+dur+.05); o2.stop(when+dur+.05);
+}
+function voice(f, when, dur, vol, glideFrom){
+  const o=A.createOscillator(), g=A.createGain(), vib=A.createOscillator(), vg=A.createGain();
+  o.type='sine'; vib.frequency.value=5.2; vg.gain.value=f*.006;
+  vib.connect(vg).connect(o.frequency);
+  if(glideFrom){o.frequency.setValueAtTime(glideFrom,when);o.frequency.exponentialRampToValueAtTime(f,when+.12);} else o.frequency.value=f;
+  const h=A.createOscillator(), hg=A.createGain(); h.type='sine'; h.frequency.value=f*2; hg.gain.value=.25; h.connect(hg).connect(g);
+  g.gain.setValueAtTime(0,when); g.gain.linearRampToValueAtTime(vol,when+.06); g.gain.setValueAtTime(vol,when+dur*.7); g.gain.linearRampToValueAtTime(0,when+dur);
+  o.connect(g).connect(filt);
+  [o,vib,h].forEach(n=>{n.start(when);n.stop(when+dur+.05);});
+}
+let lastF=null;
+function schedule(){
+  if(!playing||!W_) return;
+  const r=W_.raga, now=A.currentTime;
+  // tanpura cycle: Pa Sa Sa Sa(low)
+  while(nextDrone<now+.3){
+    const cyc=[7-12,0,0,-12], step=Math.floor(nextDrone/0.9)%4;
+    pluck(hz(cyc[step]), nextDrone, 3.2, .09, .7);
+    nextDrone+=0.9;
+  }
+  // melody: random walk on raga scale, tempo from wind
+  const beat = Math.max(.22, .9 - W_.wind/60);
+  while(nextNote<now+.3){
+    const sc=r.notes, octs=[...sc.map(s=>s),...sc.map(s=>s+12)];
+    if(Math.random()<.18){ nextNote+=beat; continue; } // breath
+    idx += [-2,-1,-1,1,1,2,0][Math.floor(Math.random()*7)];
+    idx = Math.max(0,Math.min(octs.length-1,idx));
+    const f=hz(octs[idx]), dur=beat*(Math.random()<.25?2.2:1.1);
+    voice(f,nextNote,dur,.11, lastF && Math.random()<.4 ? lastF : null);
+    if(Math.random()<.3) pluck(f*2,nextNote,1.2,.03,1.2);
+    ripples.push({x:.15+.7*(idx/octs.length), born:performance.now()+(nextNote-now)*1000, hue:idx});
+    lastF=f; nextNote+=dur;
+  }
+}
+setInterval(()=>{ if(audioOn) schedule(); }, 100);
+
+document.getElementById('play').onclick=async()=>{
+  if(!audioOn) initAudio();
+  await A.resume();
+  if(!W_) await load('Chennai');
+  retune(W_);
+  playing=true; nextNote=A.currentTime+.4; nextDrone=A.currentTime+.1;
+  master.gain.setTargetAtTime(.9,A.currentTime,.6);
+  document.getElementById('play').classList.add('hidden');
+};
+document.getElementById('toggle').onclick=e=>{
+  if(!audioOn) return document.getElementById('play').click();
+  playing=!playing;
+  master.gain.setTargetAtTime(playing?.9:.0001,A.currentTime,.3);
+  if(playing){nextNote=A.currentTime+.2;nextDrone=A.currentTime+.1;}
+  e.target.textContent=playing?'Pause':'Play';
+};
+
+// ---------- visuals ----------
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+let VW,VH; function rs(){const d=Math.min(devicePixelRatio||1,2);VW=innerWidth;VH=innerHeight;cv.width=VW*d;cv.height=VH*d;ctx.setTransform(d,0,0,d,0,0);} addEventListener('resize',rs); rs();
+let parts=[], ripples=[], scene={pal:['#0b0d18','#1d2240','#9aa6ff'],kind:'night',wind:5};
+function setupScene(w){
+  const c=w.code; const kind = c>=95?'storm':(c>=51&&c<=67)||(c>=80&&c<=82)?'rain':(c>=71&&c<=77)||c===85||c===86?'snow':(c===45||c===48)?'fog':!w.day?'night':c>=2?'cloud':'sun';
+  scene={pal:w.raga.pal,kind,wind:w.wind,day:w.day};
+  parts=[]; const n = kind==='rain'||kind==='storm'?260:kind==='snow'?180:kind==='night'?220:kind==='cloud'||kind==='fog'?14:60;
+  for(let i=0;i<n;i++) parts.push({x:Math.random()*VW,y:Math.random()*VH,s:Math.random(),p:Math.random()*6.28});
+}
+let flash=0;
+function draw(t){
+  const [a,b,c]=scene.pal;
+  const g=ctx.createLinearGradient(0,0,0,VH); g.addColorStop(0,a); g.addColorStop(1,b);
+  ctx.fillStyle=g; ctx.fillRect(0,0,VW,VH);
+  const wx = scene.wind/8;
+  ctx.save();
+  if(scene.kind==='sun'){
+    const cx=VW*.78, cy=VH*.28, r=Math.min(VW,VH)*.12;
+    for(let i=0;i<24;i++){ctx.save();ctx.translate(cx,cy);ctx.rotate(i/24*6.28+t/9000);ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(0,-2,Math.max(VW,VH),4+Math.sin(t/700+i)*3);ctx.restore();}
+    const sg=ctx.createRadialGradient(cx,cy,0,cx,cy,r*2.2); sg.addColorStop(0,c); sg.addColorStop(.45,c+'aa'); sg.addColorStop(1,'transparent');
+    ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(cx,cy,r*2.2,0,6.28); ctx.fill();
+    parts.forEach(p=>{p.x+=wx*.3+.2; if(p.x>VW)p.x=0; ctx.fillStyle='rgba(255,255,255,'+(.15+p.s*.3)+')'; ctx.beginPath(); ctx.arc(p.x,p.y+Math.sin(t/1500+p.p)*8,1+p.s*2,0,6.28); ctx.fill();});
+  } else if(scene.kind==='night'){
+    parts.forEach(p=>{ctx.fillStyle=`rgba(255,255,255,${.25+.6*Math.abs(Math.sin(t/900*p.s+p.p))})`; ctx.fillRect(p.x,p.y*.8,1+p.s*1.4,1+p.s*1.4);});
+    ctx.fillStyle=c; ctx.beginPath(); ctx.arc(VW*.8,VH*.22,34,0,6.28); ctx.fill(); ctx.fillStyle=a; ctx.beginPath(); ctx.arc(VW*.8+12,VH*.22-8,30,0,6.28); ctx.fill();
+  } else if(scene.kind==='rain'||scene.kind==='storm'){
+    ctx.strokeStyle=c+'88'; ctx.lineWidth=1.2;
+    parts.forEach(p=>{p.y+=9+p.s*10; p.x+=wx; if(p.y>VH){p.y=-20;p.x=Math.random()*VW;} if(p.x>VW)p.x=0;
+      ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-wx*2,p.y-12-p.s*14); ctx.stroke();
+      if(p.y>VH-12&&Math.random()<.3){ctx.beginPath();ctx.ellipse(p.x,VH-6,6,2,0,0,6.28);ctx.stroke();}});
+    if(scene.kind==='storm'){ if(Math.random()<.004) flash=1; if(flash>0){ctx.fillStyle=`rgba(230,225,255,${flash*.5})`;ctx.fillRect(0,0,VW,VH);flash*=.85;} }
+  } else if(scene.kind==='snow'){
+    parts.forEach(p=>{p.y+=.6+p.s*1.2; p.x+=Math.sin(t/1000+p.p)*.6+wx*.2; if(p.y>VH){p.y=-5;p.x=Math.random()*VW;} ctx.fillStyle='rgba(255,255,255,.85)'; ctx.beginPath(); ctx.arc(p.x,p.y,1+p.s*2.5,0,6.28); ctx.fill();});
+  } else { // cloud / fog
+    parts.forEach(p=>{p.x+=.15+wx*.12+p.s*.2; if(p.x>VW+300)p.x=-300;
+      const rr=140+p.s*220, yy=VH*(scene.kind==='fog'?.2+p.s*.7:.05+p.s*.45);
+      const cg=ctx.createRadialGradient(p.x,yy,0,p.x,yy,rr); cg.addColorStop(0,c+(scene.kind==='fog'?'44':'55')); cg.addColorStop(1,'transparent');
+      ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(p.x,yy,rr,0,6.28); ctx.fill();});
+  }
+  // note ripples
+  ripples=ripples.filter(r=>t-r.born<3500);
+  ripples.forEach(r=>{ const age=(t-r.born)/3500; if(age<0) return;
+    ctx.strokeStyle=`hsla(${(r.hue*35+200)%360},80%,85%,${(1-age)*.6})`; ctx.lineWidth=2*(1-age)+.5;
+    ctx.beginPath(); ctx.ellipse(r.x*VW, VH*.72, age*220, age*60, 0, 0, 6.28); ctx.stroke(); });
+  ctx.restore();
+  requestAnimationFrame(draw);
+}
+setupScene({raga:{pal:['#0b0d18','#1d2240','#c6d4ff']},code:0,day:false,wind:5});
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

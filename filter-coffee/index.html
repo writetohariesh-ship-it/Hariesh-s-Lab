@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Filter Coffee Physics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#f6ead7;--ink:#3b2314;--muted:#8a6a52;--card:#fffaf2;--brass:#c99a4a;--red:#b8412b;--green:#4f7a3a}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none}
+  canvas{position:fixed;inset:0;width:100%;height:100%;cursor:grab}
+  canvas.pouring{cursor:grabbing}
+  .hud{position:fixed;top:16px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;pointer-events:none;flex-wrap:wrap}
+  h1{font-family:'Baloo 2',cursive;font-weight:800;font-size:clamp(24px,3.4vw,38px);line-height:1;letter-spacing:-.01em}
+  h1 span{color:var(--red)}
+  .hint{font-size:13px;color:var(--muted);margin-top:4px;max-width:320px;line-height:1.4}
+  .gauges{display:flex;gap:10px;background:var(--card);border:2px solid var(--ink);border-radius:14px;padding:10px 14px;box-shadow:4px 4px 0 var(--ink)}
+  .g{min-width:72px}
+  .g label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600}
+  .g b{display:block;font-family:'Baloo 2';font-size:22px;line-height:1.1}
+  .g .bar{height:5px;background:#ead9c0;border-radius:3px;margin-top:3px;overflow:hidden}
+  .g .bar i{display:block;height:100%;background:var(--brass);width:0}
+  .actions{position:fixed;bottom:44px;right:16px;display:flex;gap:8px}
+  @media (max-width:700px){.actions{bottom:auto;top:96px;right:16px}}
+  button{font:800 15px 'Baloo 2';border:2px solid var(--ink);background:var(--card);color:var(--ink);padding:9px 18px;border-radius:12px;cursor:pointer;box-shadow:3px 3px 0 var(--ink);transition:.1s}
+  button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+  button.go{background:var(--red);color:#fff}
+  .modal{position:fixed;inset:0;background:rgba(59,35,20,.55);display:grid;place-items:center;padding:20px;z-index:5}
+  .sheet{background:var(--card);border:3px solid var(--ink);border-radius:20px;box-shadow:8px 8px 0 var(--ink);max-width:420px;width:100%;padding:26px;text-align:center}
+  .sheet h2{font-family:'Baloo 2';font-size:30px;line-height:1.1}
+  .stars{font-size:34px;letter-spacing:4px;margin:10px 0}
+  .quote{font-size:16px;line-height:1.5;margin:8px 0 16px;font-style:italic}
+  .who{font-size:12px;color:var(--muted);margin-bottom:16px}
+  .breakdown{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:18px;text-align:left}
+  .breakdown div{background:#f3e5cf;border-radius:10px;padding:8px 10px;font-size:12px;color:var(--muted)}
+  .breakdown b{display:block;color:var(--ink);font-size:16px}
+  .hidden{display:none!important}
+  @media (max-width:600px){.hint{display:none}.gauges{gap:6px;padding:8px}.g{min-width:58px}.g b{font-size:18px}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud">
+  <div><h1>Filter Coffee <span>Physics</span></h1><p class="hint">Drag to move the vessel in your hand. Hold to pour. Pour from higher up for more froth — but miss the cup and it’s on the floor.</p></div>
+  <div class="gauges">
+    <div class="g"><label>Froth</label><b id="gFroth">0%</b><div class="bar"><i id="bFroth"></i></div></div>
+    <div class="g"><label>Temp</label><b id="gTemp">88°</b><div class="bar"><i id="bTemp"></i></div></div>
+    <div class="g"><label>Mixed</label><b id="gMix">0%</b><div class="bar"><i id="bMix"></i></div></div>
+    <div class="g"><label>Spilt</label><b id="gSpill">0 ml</b></div>
+  </div>
+</div>
+<div class="actions">
+  <button id="swap">⇅ Swap vessels</button>
+  <button class="go" id="serve">Serve it</button>
+</div>
+
+<div class="modal hidden" id="modal">
+  <div class="sheet">
+    <h2 id="title">—</h2>
+    <div class="stars" id="stars"></div>
+    <p class="quote" id="quote"></p>
+    <p class="who">— the Mylapore Aunty Review Board</p>
+    <div class="breakdown" id="bd"></div>
+    <button class="go" id="again">Make another</button>
+  </div>
+</div>
+
+<script>
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+let W,H; function rs(){const d=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0);} addEventListener('resize',rs); rs();
+
+// vessel shapes (in local px, origin = centre of opening)
+const SHAPES={
+  tumbler:{name:'tumbler', topW:78, botW:60, h:150, cap:180},
+  dabarah:{name:'dabarah', topW:210, botW:120, h:64, cap:220},
+};
+const DECOC=60, MILK=100;
+let S;
+function reset(){
+  S={
+    hand:{shape:SHAPES.tumbler, ml:DECOC, dec:DECOC, x:W*.5, y:H*.32, tilt:0},
+    table:{shape:SHAPES.dabarah, ml:MILK, dec:0},
+    froth:0, temp:88, spill:0, pours:0, drops:[], splats:[], pouring:false, served:false, t:0, maxH:0, poured:0
+  };
+}
+reset();
+const tableY = () => H-36-S.table.shape.h;   // table vessel rests on the floor
+const tableX = () => W*.5;
+
+// ---------- input ----------
+let ptr=null;
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptr={x:e.clientX,y:e.clientY};S.pouring=true;cv.classList.add('pouring');});
+cv.addEventListener('pointermove',e=>{ptr={x:e.clientX,y:e.clientY};});
+const stop=()=>{S.pouring=false;cv.classList.remove('pouring');};
+cv.addEventListener('pointerup',stop); cv.addEventListener('pointercancel',stop);
+addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();swap();}});
+document.getElementById('swap').onclick=swap;
+function swap(){
+  // pick the table vessel up, put the hand vessel down
+  const h=S.hand, t=S.table;
+  S.hand={shape:t.shape, ml:t.ml, dec:t.dec, x:h.x, y:h.y, tilt:0};
+  S.table={shape:h.shape, ml:h.ml, dec:h.dec};
+}
+
+// ---------- helpers ----------
+function mixColour(ml,dec){
+  if(ml<=0) return '#000';
+  const f=dec/ml; // decoction fraction
+  const dark=[52,26,12], milk=[244,236,222];
+  const mix=dark.map((d,i)=>Math.round(milk[i]+(d-milk[i])*Math.min(1,f*1.6)));
+  return `rgb(${mix})`;
+}
+function vesselPath(sh, fill){
+  // trapezoid with rim, origin at opening centre
+  const {topW,botW,h}=sh;
+  ctx.beginPath();
+  ctx.moveTo(-topW/2,0); ctx.lineTo(-botW/2,h); ctx.quadraticCurveTo(0,h+(sh.name==='dabarah'?10:4),botW/2,h); ctx.lineTo(topW/2,0);
+}
+function drawVessel(v, x, y, tilt, isHand){
+  const sh=v.shape;
+  ctx.save(); ctx.translate(x,y); ctx.rotate(tilt);
+  // liquid
+  const frac=Math.min(1,v.ml/sh.cap);
+  if(frac>0.005){
+    ctx.save(); vesselPath(sh); ctx.clip();
+    // level stays horizontal in world: counter-rotate a big rect
+    ctx.rotate(-tilt);
+    const levelLocal = sh.h*(1-frac);
+    ctx.fillStyle=mixColour(v.ml,v.dec);
+    ctx.fillRect(-400, levelLocal*Math.cos(tilt) - Math.abs(Math.sin(tilt))*20, 800, 600);
+    // froth layer on top
+    if(isHand===false && S.froth>2){
+      const fh=Math.min(26,S.froth*.26);
+      ctx.fillStyle='#e9d2b0';
+      ctx.fillRect(-400, levelLocal-fh, 800, fh+1);
+      for(let i=0;i<S.froth*1.2;i++){
+        const bx=(Math.sin(i*91.3)*.5)*sh.topW, by=levelLocal-fh*Math.abs(Math.sin(i*13.7));
+        ctx.fillStyle=`rgba(255,248,235,${.5+.4*Math.sin(i+S.t*3)})`;
+        ctx.beginPath(); ctx.arc(bx,by,1.5+Math.abs(Math.sin(i*7.1))*3.2,0,6.28); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+  // steel body
+  vesselPath(sh);
+  const g=ctx.createLinearGradient(-sh.topW/2,0,sh.topW/2,0);
+  g.addColorStop(0,'rgba(170,175,180,.35)'); g.addColorStop(.3,'rgba(255,255,255,.55)'); g.addColorStop(.55,'rgba(150,155,160,.25)'); g.addColorStop(1,'rgba(120,125,130,.45)');
+  ctx.fillStyle=g; ctx.fill();
+  ctx.lineWidth=3; ctx.strokeStyle='#3b2314'; ctx.stroke();
+  // rim
+  ctx.beginPath(); ctx.ellipse(0,0,sh.topW/2+3,sh.name==='dabarah'?7:5,0,0,6.28);
+  ctx.strokeStyle='#3b2314'; ctx.lineWidth=3; ctx.stroke();
+  ctx.restore();
+}
+function lipPos(v){ // pouring lip = left rim corner, in world coords
+  const sh=v.shape, a=v.tilt;
+  const lx=-sh.topW/2, ly=0;
+  return {x:v.x+lx*Math.cos(a)-ly*Math.sin(a), y:v.y+lx*Math.sin(a)+ly*Math.cos(a)};
+}
+
+// ---------- sim ----------
+let last=performance.now();
+function step(now){
+  const dt=Math.min(.033,(now-last)/1000); last=now; S.t+=dt;
+  const h=S.hand, t=S.table, tx=tableX(), ty=tableY();
+  if(ptr){ h.x+= (ptr.x-h.x)*Math.min(1,dt*14); h.y+=(Math.min(ty-40,ptr.y)-h.y)*Math.min(1,dt*14); }
+  const targetTilt = S.pouring && h.ml>0 ? -1.05 : 0;
+  h.tilt += (targetTilt-h.tilt)*Math.min(1,dt*8);
+
+  // pouring: emit drops from lip
+  if(S.pouring && h.ml>0 && h.tilt<-.6){
+    const rate=46*dt, ml=Math.min(rate,h.ml), lip=lipPos(h), frac=h.dec/h.ml;
+    h.dec-=ml*frac; h.ml-=ml;
+    const n=6;
+    for(let i=0;i<n;i++) S.drops.push({x:lip.x+(Math.random()-.5)*3, y:lip.y, vx:-14+(Math.random()-.5)*6, vy:20+Math.random()*10, ml:ml/n, dec:ml*frac/n, y0:lip.y});
+  }
+  // drops fall
+  const surf = ty + t.shape.h*(1-Math.min(1,t.ml/t.shape.cap));
+  for(const d of S.drops){
+    d.vy+=1600*dt; d.x+=d.vx*dt; d.y+=d.vy*dt;
+    if(d.y>=surf && Math.abs(d.x-tx)<t.shape.topW/2-4 && d.y-d.vy*dt<surf+6){
+      // landed in the cup
+      t.ml+=d.ml; t.dec+=d.dec; d.dead=true;
+      const fall=surf-d.y0; S.maxH=Math.max(S.maxH,fall); S.poured+=d.ml;
+      S.froth=Math.min(100,S.froth+Math.max(0,(fall-70))/380*d.ml*.25);
+      S.temp-= d.ml*0.011*(1+fall/500);
+      if(Math.random()<.25) S.splats.push({x:d.x,y:surf,r:2,life:1,c:'#fff8ea'});
+    } else if(d.y>H-24){
+      S.spill+=d.ml; d.dead=true;
+      S.splats.push({x:d.x,y:H-22,r:3+Math.random()*6,life:1,c:mixColour(d.ml*10,d.dec*10),floor:true});
+    }
+  }
+  S.drops=S.drops.filter(d=>!d.dead);
+  // overflow
+  if(t.ml>t.shape.cap){ const o=t.ml-t.shape.cap; t.dec-=o*(t.dec/t.ml); t.ml=t.shape.cap; S.spill+=o; }
+  S.froth=Math.max(0,S.froth-dt*1.1);
+  S.temp=Math.max(30,S.temp-dt*.12);
+  S.splats.forEach(s=>s.life-=dt*(s.floor?.12:2)); S.splats=S.splats.filter(s=>s.life>0);
+
+  draw(); hud();
+  requestAnimationFrame(step);
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // kolam-ish floor dots + table line
+  ctx.fillStyle='#ecdcc2'; ctx.fillRect(0,H-30,W,30);
+  ctx.fillStyle='rgba(59,35,20,.12)';
+  for(let x=12;x<W;x+=24) for(let y=H*.55;y<H-40;y+=24) ctx.fillRect(x,y,2,2);
+  ctx.strokeStyle='#3b2314'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(0,H-30); ctx.lineTo(W,H-30); ctx.stroke();
+  // floor puddles
+  S.splats.filter(s=>s.floor).forEach(s=>{ctx.globalAlpha=Math.min(1,s.life);ctx.fillStyle=s.c;ctx.beginPath();ctx.ellipse(s.x,s.y,s.r*2,s.r*.6,0,0,6.28);ctx.fill();});
+  ctx.globalAlpha=1;
+  // height guide
+  const ty=tableY(), h=S.hand;
+  if(S.pouring && h.ml>0){
+    const lip=lipPos(h), fall=ty-lip.y;
+    const landX = lip.x - 14*Math.sqrt(2*Math.max(1,fall)/1600);
+    const onTarget = Math.abs(landX-tableX()) < S.table.shape.topW/2-4;
+    ctx.setLineDash([4,6]); ctx.strokeStyle= onTarget?'rgba(79,122,58,.7)':'rgba(184,65,43,.8)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(lip.x,lip.y); ctx.lineTo(landX,ty); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle= onTarget?'#4f7a3a':'#b8412b'; ctx.beginPath(); ctx.arc(landX,ty,5,0,6.28); ctx.fill();
+    ctx.fillStyle='rgba(59,35,20,.55)'; ctx.font='600 12px Inter';
+    ctx.fillText(Math.round(fall/3)+' cm'+(fall>380?' — show-off!':fall>220?' — good height':''), lip.x+4, (lip.y+ty)/2);
+  }
+  drawVessel(S.table, tableX(), ty, 0, false);
+  // stream
+  ctx.fillStyle=mixColour(h.ml||1,h.dec);
+  for(const d of S.drops){ ctx.beginPath(); ctx.ellipse(d.x,d.y,2.6,4.4,0,0,6.28); ctx.fill(); }
+  S.splats.filter(s=>!s.floor).forEach(s=>{ctx.globalAlpha=s.life;ctx.fillStyle=s.c;ctx.beginPath();ctx.arc(s.x+(1-s.life)*8*(Math.random()-.5),s.y-(1-s.life)*14,s.r,0,6.28);ctx.fill();});
+  ctx.globalAlpha=1;
+  drawVessel(h, h.x, h.y, h.tilt, true);
+  // steam
+  if(S.temp>55){
+    ctx.strokeStyle=`rgba(255,255,255,${(S.temp-55)/60})`; ctx.lineWidth=3; ctx.lineCap='round';
+    for(let i=0;i<3;i++){ ctx.beginPath(); const sx=tableX()-30+i*30;
+      for(let k=0;k<30;k++){const yy=ty-12-k*3, xx=sx+Math.sin(k/5+S.t*2+i)*6; k?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy);} ctx.stroke(); }
+  }
+  // labels
+  ctx.fillStyle='rgba(59,35,20,.5)'; ctx.font='600 11px Inter'; ctx.textAlign='center';
+  ctx.fillText(S.table.shape.name.toUpperCase(), tableX(), H-10);
+  if(h.tilt>-.15) ctx.fillText(h.shape.name.toUpperCase()+' (in hand)', h.x, h.y+h.shape.h+20);
+  ctx.textAlign='left';
+}
+
+function mixPct(){ // how evenly mixed: 100% when both vessels hold the same decoction fraction, or all in one
+  const a=S.hand, b=S.table, tot=a.ml+b.ml; if(tot<1) return 0;
+  const target=(a.dec+b.dec)/tot;
+  const fa=a.ml>1?a.dec/a.ml:target, fb=b.ml>1?b.dec/b.ml:target;
+  const err=(Math.abs(fa-target)*a.ml+Math.abs(fb-target)*b.ml)/tot;
+  return Math.max(0,Math.round(100-err/0.0075));
+}
+function hud(){
+  const set=(id,v)=>document.getElementById(id).textContent=v;
+  set('gFroth',Math.round(S.froth)+'%'); document.getElementById('bFroth').style.width=S.froth+'%';
+  set('gTemp',Math.round(S.temp)+'°'); document.getElementById('bTemp').style.width=((S.temp-30)/58*100)+'%';
+  document.getElementById('bTemp').style.background = S.temp>=60&&S.temp<=72?'#4f7a3a':S.temp>72?'#b8412b':'#5b7fa6';
+  const m=mixPct(); set('gMix',m+'%'); document.getElementById('bMix').style.width=m+'%';
+  set('gSpill',Math.round(S.spill)+' ml');
+}
+
+// ---------- judging ----------
+document.getElementById('serve').onclick=()=>{
+  const froth=S.froth, temp=S.temp, mix=mixPct(), spill=S.spill;
+  let score=0;
+  score += Math.min(40, froth*.5);
+  score += temp>=60&&temp<=72 ? 25 : Math.max(0,25-Math.abs(temp-66)*1.6);
+  score += mix*.2;
+  score -= Math.min(30, spill*.6);
+  score = Math.max(0,Math.min(100,Math.round(score+15)));
+  const stars=Math.max(1,Math.round(score/20));
+  const lines = [];
+  if (S.poured<20) lines.push(['Is this a coffee or a prank?','You didn’t pour anything, kanna. Even the decoction is sulking.']);
+  else if (spill>60) lines.push(['Floor is drinking better than us','Half the coffee is on the floor. The ants are giving you five stars, not me.']);
+  else if (temp>78) lines.push(['Lava, not coffee','Too hot! Pour a few more times — that’s literally why we have a dabarah.']);
+  else if (temp<55) lines.push(['Cold coffee? In this house?','You pulled it back and forth till it went cold. Enthusiasm good, timing bad.']);
+  else if (mix<60) lines.push(['Two drinks in one vessel','Decoction on one side, milk on the other. Mix, ma, mix.']);
+  else if (froth<25) lines.push(['Flat like a Monday','Pour from higher! The froth is the whole personality.']);
+  else if (score>=85) lines.push(['Saravana Bhavan is calling','Perfect froth, perfect heat. Who taught you? Bring them also.']);
+  else lines.push(['Decent, decent','Drinkable. Next time pull it from higher, more froth.']);
+  const [ti,q]=lines[0];
+  document.getElementById('title').textContent=ti;
+  document.getElementById('quote').textContent='“'+q+'”';
+  document.getElementById('stars').textContent='★'.repeat(stars)+'☆'.repeat(5-stars);
+  document.getElementById('bd').innerHTML=`<div>Froth<b>${Math.round(froth)}%</b></div><div>Temperature<b>${Math.round(temp)}°C</b></div><div>Mixed<b>${mix}%</b></div><div>Spilt<b>${Math.round(spill)} ml</b></div><div>Highest pull<b>${Math.round(S.maxH/3)} cm</b></div><div>Score<b>${score}/100</b></div>`;
+  document.getElementById('modal').classList.remove('hidden');
+};
+document.getElementById('again').onclick=()=>{document.getElementById('modal').classList.add('hidden');reset();};
+
+requestAnimationFrame(step);
+</script>
+</body>
+</html>

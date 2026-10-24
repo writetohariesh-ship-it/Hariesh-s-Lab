@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bite Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0e1116;--panel:rgba(20,24,31,.86);--line:#2a313c;--ink:#e8edf3;--muted:#8a96a6;--cyan:#55d6be;--warn:#ffb347;--bad:#ff5e5e}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden}
+  #view{position:fixed;inset:0}
+  .panel{position:fixed;background:var(--panel);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .title{top:16px;left:16px;max-width:330px}
+  h1{font-size:22px;font-weight:700;letter-spacing:-.01em}
+  h1 span{color:var(--cyan)}
+  .title p{font-size:13px;color:var(--muted);line-height:1.5;margin-top:6px}
+  .stats{top:16px;right:16px;min-width:230px;font-family:'IBM Plex Mono',monospace}
+  .stats .row{display:flex;justify-content:space-between;gap:16px;font-size:12px;padding:5px 0;border-bottom:1px dashed var(--line)}
+  .stats .row:last-of-type{border:0}
+  .stats .row span{color:var(--muted)}
+  .stats .big{font-size:34px;font-weight:600;color:var(--cyan);line-height:1;margin:2px 0 8px}
+  .stats .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+  .tooth{bottom:16px;left:16px;width:280px;font-size:13px}
+  .tooth h3{font-size:14px;margin-bottom:8px}
+  .tooth .m{font-family:'IBM Plex Mono';font-size:12px;color:var(--muted);line-height:1.7}
+  .tooth input{width:100%;accent-color:var(--cyan);margin-top:6px}
+  .controls{bottom:16px;right:16px;display:flex;gap:8px;padding:10px;flex-wrap:wrap;justify-content:flex-end;max-width:calc(100% - 32px)}
+  button{font:600 13px 'IBM Plex Sans';background:#1c222b;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 14px;cursor:pointer}
+  button:hover{border-color:var(--cyan)}
+  button.primary{background:var(--cyan);color:#06221c;border-color:var(--cyan)}
+  .legend{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-top:10px;font-family:'IBM Plex Mono'}
+  .legend i{display:block;height:6px;flex:1;border-radius:3px;background:linear-gradient(90deg,#f4efe6,#ffd36e,#ff8a3d,#ff3b3b)}
+  .disc{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.45}
+  @media (max-width:760px){.title p,.disc{display:none}.tooth{display:none}.stats{top:auto;bottom:76px;right:16px;left:16px;min-width:0}.stats .big{font-size:24px}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="view"></div>
+
+<div class="panel title">
+  <h1>Bite <span>Simulator</span></h1>
+  <p>An upper dental arch with crowding. Drag any tooth to move it. Arrows show the direction a clear aligner would push it back; colour shows stress from displacement and contact with neighbours. Hit <b>Run aligners</b> to watch the teeth move in 0.25&nbsp;mm steps.</p>
+  <div class="legend">calm <i></i> high stress</div>
+</div>
+
+<div class="panel stats">
+  <div class="lbl">Aligner stages needed</div>
+  <div class="big" id="stages">—</div>
+  <div class="row"><span>Est. treatment</span><b id="months">—</b></div>
+  <div class="row"><span>Max displacement</span><b id="maxd">—</b></div>
+  <div class="row"><span>Max rotation</span><b id="maxr">—</b></div>
+  <div class="row"><span>Tight contacts</span><b id="contacts">—</b></div>
+  <div class="row"><span>Current stage</span><b id="cur">0</b></div>
+</div>
+
+<div class="panel tooth" id="toothPanel">
+  <h3 id="tName">Click a tooth</h3>
+  <div class="m" id="tInfo">Drag teeth to create your own crowding.</div>
+  <label class="m" style="display:block;margin-top:8px">Rotation <input type="range" id="tRot" min="-45" max="45" value="0" disabled></label>
+  <p class="disc">Simplified teaching model: 0.25 mm and 2° per stage, 2 weeks per aligner. Real tooth movement depends on root anatomy, attachments and biology.</p>
+</div>
+
+<div class="panel controls">
+  <button id="scramble">Scramble</button>
+  <button id="ideal">Show ideal</button>
+  <button id="arrows">Arrows: on</button>
+  <button class="primary" id="run">▶ Run aligners</button>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const host=document.getElementById('view');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true; renderer.toneMapping=THREE.ACESFilmicToneMapping;
+host.appendChild(renderer.domElement);
+const scene=new THREE.Scene(); scene.background=new THREE.Color('#0e1116');
+scene.fog=new THREE.Fog('#0e1116',140,260);
+const camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.1,1000);
+camera.position.set(0,70,72);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,4,-12); controls.enableDamping=true; controls.minDistance=40; controls.maxDistance=180; controls.maxPolarAngle=Math.PI*.49;
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+scene.add(new THREE.HemisphereLight('#dfe8ff','#202020',.9));
+const key=new THREE.DirectionalLight('#ffffff',1.6); key.position.set(30,80,50); key.castShadow=true;
+key.shadow.mapSize.set(2048,2048); Object.assign(key.shadow.camera,{left:-60,right:60,top:60,bottom:-60}); scene.add(key);
+const rim=new THREE.DirectionalLight('#55d6be',.6); rim.position.set(-40,20,-60); scene.add(rim);
+
+// floor grid (mm)
+const grid=new THREE.GridHelper(200,40,'#243040','#18202a'); grid.position.y=-6; scene.add(grid);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(400,400),new THREE.ShadowMaterial({opacity:.35}));
+floor.rotation.x=-Math.PI/2; floor.position.y=-5.9; floor.receiveShadow=true; scene.add(floor);
+
+// ---------- arch layout ----------
+// upper right 17→11, then upper left 21→27. Widths are typical mesiodistal crown widths (mm).
+const TYPES={
+  M2:{w:9,d:11,h:7,name:'Second molar'}, M1:{w:10,d:11.5,h:7.5,name:'First molar'},
+  P2:{w:6.8,d:9,h:8,name:'Second premolar'}, P1:{w:7,d:9,h:8.5,name:'First premolar'},
+  C:{w:7.5,d:8,h:10.5,name:'Canine'}, I2:{w:6.5,d:6,h:9,name:'Lateral incisor'}, I1:{w:8.5,d:7,h:10.5,name:'Central incisor'},
+};
+const right=[['17','M2'],['16','M1'],['15','P2'],['14','P1'],['13','C'],['12','I2'],['11','I1']];
+const order=[...right,...right.slice().reverse().map(([n,t])=>['2'+n[1],t])];
+
+// arch curve: parabola z = -k x^2 + front; sample by arc length
+const k=0.031, front=0;
+const curve=x=>new THREE.Vector3(x,0,-(k*x*x)+front);
+function samplesAlong(){ const pts=[]; let len=0, prev=curve(-40); for(let x=-40;x<=40;x+=.05){const p=curve(x);len+=p.distanceTo(prev);pts.push({x,len});prev=p;} return pts; }
+const S=samplesAlong(); const total=order.reduce((a,[,t])=>a+TYPES[t].w+.15,0);
+const mid=S[S.length-1].len/2; let cursor=mid-total/2;
+function xAtLen(L){ for(const s of S) if(s.len>=L) return s.x; return 40; }
+
+const teeth=[];
+const toothMat=c=>new THREE.MeshPhysicalMaterial({color:c,roughness:.32,clearcoat:.6,clearcoatRoughness:.25,sheen:.3});
+order.forEach(([fdi,t],i)=>{
+  const T=TYPES[t]; const cL=cursor+T.w/2; cursor+=T.w+.15;
+  const x=xAtLen(cL), p=curve(x);
+  const tangent=curve(x+.01).sub(curve(x-.01)).normalize();
+  const yaw=Math.atan2(-tangent.z,tangent.x);
+  const g=new THREE.Group();
+  const crown=new THREE.Mesh(new RoundedBoxGeometry(T.w*.94,T.h,T.d,3,Math.min(T.w,T.d)*.28),toothMat('#f4efe6'));
+  crown.position.y=T.h/2; crown.castShadow=true; crown.receiveShadow=true; g.add(crown);
+  // cusps / incisal edge character
+  if(t==='C'){ const cone=new THREE.Mesh(new THREE.ConeGeometry(T.w*.32,3,24),crown.material); cone.position.y=T.h+1.2; cone.castShadow=true; g.add(cone); }
+  if(t[0]==='P'||t[0]==='M'){ const n=t[0]==='M'?4:2; for(let c=0;c<n;c++){ const s=new THREE.Mesh(new THREE.SphereGeometry(T.w*.2,16,12),crown.material);
+      s.position.set((n===4?(c%2?.22:-.22):0)*T.w, T.h-.3, (c<(n/2)?-.22:.22)*T.d); s.scale.y=.6; s.castShadow=true; g.add(s);} }
+  g.position.copy(p); g.rotation.y=yaw;
+  g.userData={fdi,type:t,T,ideal:{pos:p.clone(),yaw},off:new THREE.Vector3(),rot:0,i};
+  g.traverse(o=>{if(o.isMesh)o.userData.tooth=g;});
+  scene.add(g); teeth.push(g);
+});
+
+// gum: tube along the arch
+{
+  const pts=[]; for(let x=-34;x<=34;x+=1) pts.push(curve(x).add(new THREE.Vector3(0,-1.8,0)));
+  const tube=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),120,6,24,false),
+    new THREE.MeshPhysicalMaterial({color:'#d9737f',roughness:.55,clearcoat:.3,sheen:.6,sheenColor:new THREE.Color('#ffb0b8')}));
+  tube.scale.y=.6; tube.receiveShadow=true; scene.add(tube);
+  // palate
+  const shape=new THREE.Shape(); shape.moveTo(-30,0);
+  for(let x=-30;x<=30;x+=2){const p=curve(x); shape.lineTo(p.x,-p.z+3);} shape.lineTo(30,-0); shape.lineTo(-30,-0);
+}
+
+// ghost ideal positions
+const ghosts=teeth.map(t=>{const T=t.userData.T;const m=new THREE.Mesh(new RoundedBoxGeometry(T.w*.94,T.h,T.d,2,1.2),new THREE.MeshBasicMaterial({color:'#55d6be',wireframe:true,transparent:true,opacity:.25}));
+  m.position.copy(t.userData.ideal.pos); m.position.y=T.h/2; m.rotation.y=t.userData.ideal.yaw; m.visible=false; scene.add(m); return m;});
+
+// force arrows
+const arrows=teeth.map(()=>{const a=new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),1,'#55d6be',2,1.4); scene.add(a); return a;});
+let showArrows=true;
+
+// ---------- state ----------
+function apply(t){
+  const u=t.userData; t.position.copy(u.ideal.pos).add(u.off); t.rotation.y=u.ideal.yaw+u.rot*Math.PI/180;
+}
+function scramble(){
+  teeth.forEach(t=>{const u=t.userData; const front=['I1','I2','C'].includes(u.type);
+    const amt=front?3.2:1.2;
+    u.off.set((Math.random()-.5)*amt,0,(Math.random()-.5)*amt*1.4);
+    u.rot=(Math.random()-.5)*(front?50:18); apply(t);});
+  stage=0; update();
+}
+
+const cA=new THREE.Color('#f4efe6'),cB=new THREE.Color('#ffd36e'),cC=new THREE.Color('#ff8a3d'),cD=new THREE.Color('#ff3b3b');
+function heat(s){ s=Math.max(0,Math.min(1,s)); const c=new THREE.Color();
+  if(s<.33) c.lerpColors(cA,cB,s/.33); else if(s<.66) c.lerpColors(cB,cC,(s-.33)/.33); else c.lerpColors(cC,cD,(s-.66)/.34); return c; }
+
+let stage=0;
+function contactsFor(){
+  // overlap between neighbours: distance between centres vs half-widths (approx along arch)
+  const o=new Array(teeth.length).fill(0); let tight=0;
+  for(let i=0;i<teeth.length-1;i++){
+    const a=teeth[i],b=teeth[i+1]; const need=(a.userData.T.w+b.userData.T.w)/2*.95;
+    const d=a.position.distanceTo(b.position); const ov=Math.max(0,need-d);
+    if(ov>.4) tight++; o[i]+=ov; o[i+1]+=ov;
+  }
+  return {o,tight};
+}
+function update(){
+  const {o,tight}=contactsFor(); let maxD=0,maxR=0,need=0;
+  teeth.forEach((t,i)=>{
+    const u=t.userData, d=u.off.length(), r=Math.abs(u.rot);
+    maxD=Math.max(maxD,d); maxR=Math.max(maxR,r);
+    need=Math.max(need,Math.ceil(d/.25),Math.ceil(r/2));
+    const s=d/3.5+r/40+o[i]/1.5;
+    t.traverse(m=>{if(m.isMesh)m.material.color.copy(heat(s));});
+    const a=arrows[i];
+    if(d>.05 && showArrows){ a.visible=true; const dir=u.off.clone().negate().normalize();
+      a.position.copy(t.position).add(new THREE.Vector3(0,u.T.h+4,0)); a.setDirection(dir);
+      const L=2+d*2.2; a.setLength(L,Math.min(2.2,L*.4),1.4); a.setColor(heat(s).lerp(new THREE.Color('#55d6be'),.4)); }
+    else a.visible=false;
+  });
+  // each tooth shares material per mesh, so give each its own material once
+  document.getElementById('stages').textContent=need;
+  document.getElementById('months').textContent=need?`${(need*2/4.345).toFixed(1)} months`:'done ✓';
+  document.getElementById('maxd').textContent=maxD.toFixed(2)+' mm';
+  document.getElementById('maxr').textContent=maxR.toFixed(1)+'°';
+  document.getElementById('contacts').textContent=tight;
+  document.getElementById('cur').textContent=stage;
+  if(sel) showSel();
+}
+// give each tooth its own material so colours are independent
+teeth.forEach(t=>{const m=toothMat('#f4efe6'); t.traverse(o=>{if(o.isMesh)o.material=m;});});
+
+// ---------- interaction ----------
+const ray=new THREE.Raycaster(), ndc=new THREE.Vector2(), plane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+let drag=null, sel=null;
+function pick(e){ const r=renderer.domElement.getBoundingClientRect(); ndc.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1); ray.setFromCamera(ndc,camera); }
+renderer.domElement.addEventListener('pointerdown',e=>{
+  pick(e); const hit=ray.intersectObjects(teeth,true)[0];
+  if(hit){ const t=hit.object.userData.tooth; select(t); controls.enabled=false;
+    const p=new THREE.Vector3(); ray.ray.intersectPlane(plane,p); drag={t,start:p,off0:t.userData.off.clone()}; renderer.domElement.setPointerCapture(e.pointerId);}
+});
+renderer.domElement.addEventListener('pointermove',e=>{
+  if(!drag) { pick(e); renderer.domElement.style.cursor=ray.intersectObjects(teeth,true).length?'grab':'default'; return; }
+  pick(e); const p=new THREE.Vector3(); if(!ray.ray.intersectPlane(plane,p)) return;
+  const u=drag.t.userData; u.off.copy(drag.off0).add(p.sub(drag.start)); u.off.y=0; if(u.off.length()>6) u.off.setLength(6);
+  apply(drag.t); update();
+});
+const endDrag=()=>{drag=null;controls.enabled=true;};
+renderer.domElement.addEventListener('pointerup',endDrag); renderer.domElement.addEventListener('pointercancel',endDrag);
+
+const rotIn=document.getElementById('tRot');
+function select(t){ sel=t; rotIn.disabled=false; rotIn.value=t.userData.rot; showSel();
+  teeth.forEach(x=>x.scale.setScalar(x===t?1.06:1)); }
+function showSel(){ const u=sel.userData;
+  document.getElementById('tName').textContent=`Tooth ${u.fdi} · ${u.T.name}`;
+  document.getElementById('tInfo').innerHTML=`Displacement ${u.off.length().toFixed(2)} mm<br>Rotation ${u.rot.toFixed(1)}°<br>Stages for this tooth ${Math.max(Math.ceil(u.off.length()/.25),Math.ceil(Math.abs(u.rot)/2))}`; }
+rotIn.oninput=()=>{ if(!sel) return; sel.userData.rot=+rotIn.value; apply(sel); update(); };
+
+// ---------- treatment run ----------
+let running=false, acc=0;
+function stepStage(){
+  let moved=false;
+  teeth.forEach(t=>{const u=t.userData;
+    const d=u.off.length(); if(d>0){ const s=Math.min(.25,d); u.off.setLength(d-s); moved=true; }
+    if(Math.abs(u.rot)>0){ const s=Math.min(2,Math.abs(u.rot)); u.rot-=Math.sign(u.rot)*s; moved=true; }
+    apply(t);});
+  if(moved){stage++;} else { running=false; document.getElementById('run').textContent='▶ Run aligners'; }
+  update();
+}
+document.getElementById('run').onclick=e=>{ running=!running; e.target.textContent=running?'❚❚ Pause':'▶ Run aligners'; };
+document.getElementById('scramble').onclick=()=>{running=false;document.getElementById('run').textContent='▶ Run aligners';scramble();};
+document.getElementById('ideal').onclick=e=>{const v=!ghosts[0].visible; ghosts.forEach(g=>g.visible=v); e.target.textContent=v?'Hide ideal':'Show ideal';};
+document.getElementById('arrows').onclick=e=>{showArrows=!showArrows; e.target.textContent='Arrows: '+(showArrows?'on':'off'); update();};
+
+scramble();
+let last=performance.now();
+renderer.setAnimationLoop(now=>{
+  const dt=(now-last)/1000; last=now;
+  if(running){ acc+=dt; if(acc>.28){acc=0; stepStage();} }
+  controls.update(); renderer.render(scene,camera);
+});
+</script>
+</body>
+</html>

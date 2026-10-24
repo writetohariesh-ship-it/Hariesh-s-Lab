@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sing to Paint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;1,400&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#120f0d;--ink:#f4ecdf;--muted:#a89a88;--line:#3a322b;--accent:#ff8a3d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;overflow:hidden}
+  canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+  header{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:20px 24px;pointer-events:none;z-index:2}
+  h1{font-family:Fraunces,serif;font-weight:600;font-size:clamp(22px,3vw,32px);letter-spacing:-.02em}
+  h1 em{font-style:italic;font-weight:400;color:var(--accent)}
+  .sub{color:var(--muted);font-size:13px;margin-top:4px;max-width:340px;line-height:1.4}
+  .note{font-family:Fraunces,serif;font-size:clamp(40px,7vw,72px);line-height:1;text-align:right;min-width:2ch;transition:color .2s}
+  .note small{display:block;font-family:Inter;font-size:12px;color:var(--muted);margin-top:6px;letter-spacing:.08em;text-transform:uppercase}
+  .bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2;flex-wrap:wrap;justify-content:center;padding:0 16px}
+  button{font:600 14px Inter;border:1px solid var(--line);background:rgba(30,25,21,.85);backdrop-filter:blur(8px);color:var(--ink);padding:11px 18px;border-radius:999px;cursor:pointer;transition:.15s}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);color:#1a0f06;border-color:var(--accent)}
+  .meter{position:fixed;bottom:76px;left:50%;transform:translateX(-50%);width:200px;height:4px;background:var(--line);border-radius:4px;overflow:hidden;z-index:2}
+  .meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .05s}
+  .intro{position:fixed;inset:0;display:grid;place-items:center;z-index:3;background:radial-gradient(circle at 50% 40%,#2a1c12,var(--bg) 70%);text-align:center;padding:24px}
+  .intro h2{font-family:Fraunces,serif;font-size:clamp(40px,8vw,88px);letter-spacing:-.03em;line-height:.95}
+  .intro h2 em{color:var(--accent);font-weight:400}
+  .intro p{color:var(--muted);max-width:420px;margin:18px auto 28px;line-height:1.55}
+  .intro .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .legend{font-size:12px;color:var(--muted);margin-top:22px;line-height:1.8}
+  .hidden{display:none!important}
+  @media (max-width:560px){header{padding:16px}.sub{display:none}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<header>
+  <div><h1>Sing to <em>Paint</em></h1><p class="sub">Pitch moves the brush. Loudness thickens it. Hold a note and it blooms.</p></div>
+  <div class="note" id="note">—<small id="hz">silent</small></div>
+</header>
+
+<div class="meter"><i id="lvl"></i></div>
+<div class="bar hidden" id="bar">
+  <button id="pause">Pause</button>
+  <button id="clear">New canvas</button>
+  <button id="save" class="primary">Save artwork</button>
+</div>
+
+<div class="intro" id="intro">
+  <div>
+    <h2>Your voice<br>is the <em>brush.</em></h2>
+    <p>Hum, sing, whistle. Every song leaves behind a painting nobody else could make. Nothing is recorded or uploaded — the sound never leaves your browser.</p>
+    <div class="row">
+      <button class="primary" id="start">Allow mic &amp; start</button>
+      <button id="demo">No mic? Watch a demo</button>
+    </div>
+    <div class="legend">High notes paint high · loud notes paint thick · each of the 12 notes has its own colour</div>
+  </div>
+</div>
+
+<script>
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+let W, H, dpr;
+function size(){
+  const snap = W ? ctx.getImageData(0,0,cv.width,cv.height) : null;
+  dpr = Math.min(window.devicePixelRatio||1, 2);
+  W = innerWidth; H = innerHeight;
+  cv.width = W*dpr; cv.height = H*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  paintBg();
+  if (snap) ctx.putImageData(snap,0,0);
+}
+function paintBg(){
+  ctx.fillStyle = '#120f0d'; ctx.fillRect(0,0,W,H);
+}
+addEventListener('resize', size); size();
+
+const NOTES = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+const SARGAM = ['Sa','Ri₁','Ri₂','Ga₁','Ga₂','Ma₁','Ma₂','Pa','Da₁','Da₂','Ni₁','Ni₂'];
+const hueFor = n => (n*30 + 20) % 360;
+
+// ---------- pitch detection (autocorrelation) ----------
+function detectPitch(buf, sr){
+  let n = buf.length, rms = 0;
+  for (let i=0;i<n;i++) rms += buf[i]*buf[i];
+  rms = Math.sqrt(rms/n);
+  if (rms < 0.012) return {f:-1, rms};
+  // trim to the steady middle
+  let r1=0, r2=n-1, th=0.2;
+  for (let i=0;i<n/2;i++) if (Math.abs(buf[i])<th){r1=i;break;}
+  for (let i=1;i<n/2;i++) if (Math.abs(buf[n-i])<th){r2=n-i;break;}
+  const b = buf.slice(r1,r2); n = b.length;
+  const c = new Float32Array(n);
+  for (let i=0;i<n;i++) for (let j=0;j<n-i;j++) c[i] += b[j]*b[j+i];
+  let d=0; while (d<n-1 && c[d]>c[d+1]) d++;
+  let maxv=-1, maxp=-1;
+  for (let i=d;i<n;i++) if (c[i]>maxv){maxv=c[i];maxp=i;}
+  if (maxp<=0 || maxp>=n-1) return {f:-1, rms};
+  const x1=c[maxp-1], x2=c[maxp], x3=c[maxp+1];
+  const a=(x1+x3-2*x2)/2, bb=(x3-x1)/2;
+  const T0 = a ? maxp - bb/(2*a) : maxp;
+  const f = sr/T0;
+  return {f: (f>60 && f<1400) ? f : -1, rms};
+}
+
+// ---------- brush state ----------
+let running=false, paused=false, source=null;
+let x=40, lane=0, py=null, px=null, holdT=0, lastNote=-1, bloomed=false, t0=performance.now();
+const SPEED = 70; // px per second
+const MIN_F = 80, MAX_F = 1000;
+
+function yFor(f){
+  const lo=Math.log2(MIN_F), hi=Math.log2(MAX_F);
+  const k = (Math.log2(Math.min(MAX_F,Math.max(MIN_F,f)))-lo)/(hi-lo);
+  return H*0.88 - k*H*0.72;
+}
+
+function bloom(cx, cy, hue, size){
+  const petals = 6 + Math.floor(Math.random()*6);
+  ctx.save(); ctx.translate(cx,cy);
+  ctx.globalCompositeOperation='lighter';
+  for (let i=0;i<petals;i++){
+    ctx.rotate(Math.PI*2/petals);
+    const g = ctx.createRadialGradient(0,size*.5,0,0,size*.5,size*.6);
+    g.addColorStop(0,`hsla(${hue},85%,62%,.35)`);
+    g.addColorStop(1,`hsla(${hue+30},90%,50%,0)`);
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.ellipse(0,size*.5,size*.22,size*.55,0,0,Math.PI*2); ctx.fill();
+  }
+  ctx.fillStyle=`hsla(${hue+180},80%,80%,.9)`;
+  ctx.beginPath(); ctx.arc(0,0,size*.08,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function stroke(f, rms, dt){
+  x += SPEED*dt;
+  if (x > W-40){ x=40; lane++; px=null; py=null;
+    // soften the old layer so new rows sit on top
+    ctx.fillStyle='rgba(18,15,13,.35)'; ctx.fillRect(0,0,W,H);
+  }
+  const noteEl = document.getElementById('note'), hzEl = document.getElementById('hz');
+  document.getElementById('lvl').style.width = Math.min(100, rms*900)+'%';
+
+  if (f<0){
+    px=null; py=null; holdT=0; bloomed=false; lastNote=-1;
+    noteEl.firstChild.nodeValue='—'; hzEl.textContent='silent'; noteEl.style.color='';
+    // drift dots
+    if (Math.random()<.15){ ctx.fillStyle='rgba(244,236,223,.08)'; ctx.fillRect(x, H*.5+Math.sin(x/40)*H*.3, 1.5,1.5); }
+    return;
+  }
+  const midi = 69 + 12*Math.log2(f/440);
+  const n = ((Math.round(midi)%12)+12)%12;
+  const hue = hueFor(n);
+  const y = yFor(f) + Math.sin(lane*1.7)*14;
+  const w = 1.5 + Math.min(1, rms*5)*18;
+
+  noteEl.firstChild.nodeValue = NOTES[n];
+  noteEl.style.color = `hsl(${hue},85%,65%)`;
+  hzEl.textContent = Math.round(f)+' Hz · '+SARGAM[(n+12)%12]+' (C as Sa)';
+
+  if (px!==null){
+    ctx.lineCap='round';
+    // soft halo
+    ctx.globalCompositeOperation='screen';
+    ctx.strokeStyle=`hsla(${hue},90%,50%,.035)`; ctx.lineWidth=w*3;
+    ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(x,y); ctx.stroke();
+    // core
+    ctx.globalCompositeOperation='source-over';
+    ctx.strokeStyle=`hsla(${hue},80%,${52+Math.min(20,rms*60)}%,.5)`; ctx.lineWidth=w;
+    ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(x,y); ctx.stroke();
+    // grain
+    for (let i=0;i<3;i++){
+      ctx.fillStyle=`hsla(${hue+40},90%,75%,.25)`;
+      ctx.fillRect(x+(Math.random()-.5)*w*2, y+(Math.random()-.5)*w*2, 1.2,1.2);
+    }
+    ctx.globalCompositeOperation='source-over';
+  }
+  px=x; py=y;
+
+  if (n===lastNote){ holdT+=dt; } else { holdT=0; bloomed=false; lastNote=n; }
+  if (holdT>0.7 && !bloomed){ bloom(x,y,hue,26+Math.min(60,rms*300)); bloomed=true; }
+}
+
+// ---------- audio ----------
+let actx, analyser, buf;
+async function startMic(){
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    actx = new (window.AudioContext||window.webkitAudioContext)();
+    analyser = actx.createAnalyser(); analyser.fftSize=2048;
+    actx.createMediaStreamSource(stream).connect(analyser);
+    buf = new Float32Array(analyser.fftSize);
+    source='mic'; begin();
+  }catch(e){
+    alert('Microphone was blocked, so here is the demo instead. You can allow the mic from the address bar and reload.');
+    startDemo();
+  }
+}
+
+// demo: a synthetic singer walking through a little melody
+const tune = [[60,.9],[62,.5],[64,.5],[67,1.2],[0,.4],[69,.5],[67,.5],[64,.9],[62,.4],[60,1.4],[0,.5],[72,.6],[71,.4],[69,.4],[67,1.5],[0,.6],[64,.4],[65,.4],[67,.4],[69,.4],[71,.4],[72,1.6],[0,.8]];
+let demoIdx=0, demoT=0;
+function demoSample(dt){
+  demoT+=dt;
+  while (demoT>tune[demoIdx][1]){ demoT-=tune[demoIdx][1]; demoIdx=(demoIdx+1)%tune.length; }
+  const [m,len]=tune[demoIdx];
+  if (!m) return {f:-1,rms:0};
+  const vib = 1+Math.sin(performance.now()/140)*0.006;
+  const env = Math.sin(Math.min(1,demoT/len)*Math.PI);
+  return {f:440*Math.pow(2,(m-69)/12)*vib, rms:0.03+env*0.12};
+}
+function startDemo(){ source='demo'; begin(); }
+
+function begin(){
+  document.getElementById('intro').classList.add('hidden');
+  document.getElementById('bar').classList.remove('hidden');
+  running=true; t0=performance.now(); requestAnimationFrame(loop);
+}
+
+let last=performance.now();
+function loop(now){
+  const dt = Math.min(.05,(now-last)/1000); last=now;
+  if (running && !paused){
+    let r;
+    if (source==='mic'){ analyser.getFloatTimeDomainData(buf); r=detectPitch(buf, actx.sampleRate); }
+    else r=demoSample(dt);
+    stroke(r.f, r.rms, dt);
+  }
+  requestAnimationFrame(loop);
+}
+
+document.getElementById('start').onclick = startMic;
+document.getElementById('demo').onclick = startDemo;
+document.getElementById('pause').onclick = e => { paused=!paused; e.target.textContent = paused?'Resume':'Pause'; };
+document.getElementById('clear').onclick = () => { paintBg(); x=40; lane=0; px=py=null; };
+document.getElementById('save').onclick = () => {
+  const out = document.createElement('canvas'); out.width=cv.width; out.height=cv.height;
+  const o = out.getContext('2d'); o.drawImage(cv,0,0);
+  o.font = `${14*dpr}px Inter, sans-serif`; o.fillStyle='rgba(244,236,223,.5)';
+  o.fillText('sung by hand · Sing to Paint · Hariesh’s Lab', 24*dpr, out.height-24*dpr);
+  const a = document.createElement('a'); a.download='my-song-painting.png'; a.href=out.toDataURL('image/png'); a.click();
+};
+</script>
+</body>
+</html>

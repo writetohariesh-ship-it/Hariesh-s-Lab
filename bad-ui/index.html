@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bad UI Hall of Fame</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#111;--paper:#fffdf5;--y:#ffe14d;--p:#ff7ab6;--b:#5ec8ff;--g:#7ee08a;--o:#ff9a3c;--v:#b69cff}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font-family:'Space Grotesk',system-ui,sans-serif;
+    background-image:radial-gradient(#0001 1px,transparent 1px);background-size:18px 18px}
+  header{padding:48px 20px 28px;max-width:1180px;margin:0 auto}
+  .kicker{display:inline-block;background:var(--ink);color:var(--y);font-weight:700;font-size:12px;letter-spacing:.14em;text-transform:uppercase;padding:6px 10px;transform:rotate(-1.5deg)}
+  h1{font-family:'Archivo Black',sans-serif;font-size:clamp(44px,9vw,112px);line-height:.88;letter-spacing:-.03em;margin:14px 0 18px}
+  h1 mark{background:var(--p);padding:0 .12em;box-shadow:6px 6px 0 var(--ink);border:3px solid var(--ink)}
+  .lede{font-size:clamp(16px,1.8vw,19px);max-width:620px;line-height:1.5}
+  .score{margin-top:18px;display:inline-flex;gap:10px;align-items:center;border:3px solid var(--ink);background:#fff;padding:8px 14px;box-shadow:4px 4px 0 var(--ink);font-weight:700}
+  main{max-width:1180px;margin:0 auto;padding:10px 20px 80px;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:26px}
+  .ex{border:3px solid var(--ink);background:#fff;box-shadow:7px 7px 0 var(--ink);display:flex;flex-direction:column}
+  .ex .head{padding:14px 16px;border-bottom:3px solid var(--ink);display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .ex h2{font-family:'Archivo Black';font-size:20px;line-height:1.05}
+  .no{font-family:'Archivo Black';font-size:13px;border:2px solid var(--ink);padding:2px 7px;background:#fff;white-space:nowrap}
+  .stage{padding:20px 16px;min-height:220px;display:grid;place-items:center;position:relative;overflow:hidden;border-bottom:3px solid var(--ink)}
+  .crime{padding:12px 16px;font-size:14px;line-height:1.45}
+  .crime b{display:inline-block;background:var(--ink);color:#fff;font-size:11px;letter-spacing:.1em;padding:2px 6px;margin-right:6px;text-transform:uppercase}
+  .fix{padding:0 16px 14px;font-size:13px;line-height:1.45;color:#444}
+  .fix b{color:#0a7d2c}
+  .out{font-family:'Archivo Black';font-size:18px;min-height:24px;text-align:center;margin-top:10px;word-break:break-all}
+  .btn{font:700 15px 'Space Grotesk';border:3px solid var(--ink);background:var(--y);padding:9px 16px;box-shadow:4px 4px 0 var(--ink);cursor:pointer;transition:transform .08s,box-shadow .08s}
+  .btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+  /* 1 rotary */
+  .dial{width:200px;height:200px;border-radius:50%;border:3px solid var(--ink);background:var(--b);position:relative;touch-action:none;cursor:grab}
+  .dial .hole{position:absolute;width:30px;height:30px;border-radius:50%;background:#fff;border:3px solid var(--ink);display:grid;place-items:center;font-weight:700;font-size:13px}
+  .dial .hub{position:absolute;inset:62px;border-radius:50%;background:var(--y);border:3px solid var(--ink);display:grid;place-items:center;font-size:11px;font-weight:700;text-align:center}
+  .stopper{position:absolute;width:10px;height:28px;background:var(--ink);left:180px;top:132px;transform:rotate(-60deg);border-radius:3px;pointer-events:none}
+  /* 2 gravity */
+  .tiltwrap{width:260px;text-align:center}
+  .beam{height:16px;background:var(--o);border:3px solid var(--ink);position:relative;transform-origin:50% 50%;margin:40px 0 0}
+  .ball{position:absolute;top:-24px;width:22px;height:22px;border-radius:50%;background:var(--p);border:3px solid var(--ink)}
+  input[type=range].tilt{width:180px;margin-top:30px;accent-color:var(--ink)}
+  /* 3 runaway */
+  .runaway{position:absolute;transition:left .12s,top .12s}
+  /* 4 slots */
+  .slots{display:flex;gap:8px}
+  .reel{width:70px;height:62px;border:3px solid var(--ink);background:var(--g);display:grid;place-items:center;font-family:'Archivo Black';font-size:22px}
+  .reel.y{width:86px}
+  /* 5 alphabet */
+  .letter{font-family:'Archivo Black';font-size:72px;width:110px;height:110px;border:3px solid var(--ink);display:grid;place-items:center;background:var(--v)}
+  /* 6 captcha */
+  .grid{display:grid;grid-template-columns:repeat(3,64px);gap:4px}
+  .grid div{height:64px;border:3px solid var(--ink);cursor:pointer;display:grid;place-items:center;font-size:28px;background:#fff}
+  .grid div.on{background:var(--b);outline:3px solid var(--ink)}
+  /* 7 T&C */
+  .tnc{width:100%;max-width:280px}
+  .tnc .box{height:110px;overflow:auto;border:3px solid var(--ink);padding:8px;font-size:11px;line-height:1.5;background:#fafafa}
+  .tnc label{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px;font-weight:700;position:relative}
+  /* 8 age slider */
+  input[type=range].age{width:100%;max-width:280px;accent-color:var(--p)}
+  /* 9 volume */
+  .vol{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .pi{font-family:'Archivo Black';font-size:13px;letter-spacing:.05em;max-width:260px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  footer{text-align:center;padding:30px 20px 50px;font-size:13px}
+  footer a{color:var(--ink)}
+  @media (max-width:420px){main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <span class="kicker">Hariesh’s Lab · Exhibit hall</span>
+  <h1>Bad UI<br><mark>Hall of Fame</mark></h1>
+  <p class="lede">Nine form inputs, each lovingly engineered to be as hostile as possible. Every exhibit works — technically. Below each one is what a sane designer would ship instead.</p>
+  <div class="score">😤 Frustrations survived: <span id="survived">0</span>/9</div>
+</header>
+
+<main>
+
+<!-- 1 -->
+<section class="ex" data-ex>
+  <div class="head"><h2>Phone number, by rotary dial</h2><span class="no">#01</span></div>
+  <div class="stage"><div>
+    <div class="dial" id="dial"><div class="hub">drag a hole<br>to the stop</div></div>
+    <div class="out" id="phone">+91 </div>
+  </div></div>
+  <p class="crime"><b>Crime</b>Ten digits, each requiring a full clockwise drag. Typo? There is no backspace. There was never a backspace.</p>
+  <p class="fix"><b>Do instead:</b> <code>type="tel"</code> with <code>inputmode="numeric"</code> so phones show the number pad, and a country picker.</p>
+</section>
+
+<!-- 2 -->
+<section class="ex" data-ex>
+  <div class="head"><h2>Volume, set by gravity</h2><span class="no">#02</span></div>
+  <div class="stage"><div class="tiltwrap">
+    <div class="beam" id="beam"><div class="ball" id="ball"></div></div>
+    <input type="range" class="tilt" id="tilt" min="-20" max="20" value="0" aria-label="Tilt">
+    <div class="out" id="volOut">Volume: 50%</div>
+  </div></div>
+  <p class="crime"><b>Crime</b>You don’t set the volume. You tilt the beam and negotiate with physics. The ball has momentum. The ball has opinions.</p>
+  <p class="fix"><b>Do instead:</b> a plain slider with visible value, plus step buttons for precise changes.</p>
+</section>
+
+<!-- 3 -->
+<section class="ex" data-ex>
+  <div class="head"><h2>The shy submit button</h2><span class="no">#03</span></div>
+  <div class="stage" id="runStage"><button class="btn runaway" id="run">Submit</button><div class="out" id="runMsg" style="position:absolute;bottom:12px;left:0;right:0;font-size:14px"></div></div>
+  <p class="crime"><b>Crime</b>Every time your cursor gets close, it panics and moves. It gets tired eventually. Probably.</p>
+  <p class="fix"><b>Do instead:</b> buttons stay put. If the form isn’t ready, keep it enabled and explain what’s missing on click.</p>
+</section>
+
+<!-- 4 -->
+<section class="ex" data-ex>
+  <div class="head"><h2>Date of birth slot machine</h2><span class="no">#04</span></div>
+  <div class="stage"><div style="text-align:center">
+    <div class="slots"><div class="reel" id="rD">01</div><div class="reel" id="rM">JAN</div><div class="reel y" id="rY">1990</div></div>
+    <div style="margin-top:14px"><button class="btn" id="spin">Pull lever</button></div>
+    <div class="out" id="dobOut"></div>
+  </div></div>
+  <p class="crime"><b>Crime</b>Spin and hope. Tap a reel to stop it — good luck, it’s fast. Feb 31 is accepted. Of course it is.</p>
+  <p class="fix"><b>Do instead:</b> three plain text fields (DD / MM / YYYY). For birthdays, native date pickers are slower than typing.</p>
+</section>
+
+<!-- 5 -->
+<section class="ex" data-ex>
+  <div class="head"><h2>Name, one letter at a time</h2><span class="no">#05</span></div>
+  <div class="stage"><div style="text-align:center">
+    <div class="letter" id="letter">A</div>
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:center"><button class="btn" id="pick">This one</button><button class="btn" style="background:#fff" id="nameDone">Done</button></div>
+    <div class="out" id="nameOut">_</div>
+  </div></div>
+  <p class="crime"><b>Crime</b>The alphabet scrolls past at its own pace. Missed your letter? Wait 26 more. Your name is Zainab? Condolences.</p>
+  <p class="fix"><b>Do instead:</b> a text field. Accept any characters — real names have spaces, hyphens, apostrophes and non-Latin scripts.</p>
+</section>
+
+<!-- 6 -->
+<section class="ex" data-ex>
+  <div class="head"><h2>Select all squares with vibes</h2><span class="no">#06</span></div>
+  <div class="stage"><div style="text-align:center">
+    <div class="grid" id="grid"></div>
+    <div style="margin-top:12px"><button class="btn" id="verify">Verify</button></div>
+    <div class="out" id="capOut" style="font-size:14px"></div>
+  </div></div>
+  <p class="crime"><b>Crime</b>Ambiguous instructions, secret right answer, infinite retries. You are a robot until proven otherwise.</p>
+  <p class="fix"><b>Do instead:</b> invisible bot checks first; if a challenge is unavoidable, make the criteria objective and offer an audio option.</p>
+</section>
+
+<!-- 7 -->
+<section class="ex" data-ex>
+  <div class="head"><h2>Terms you must “read”</h2><span class="no">#07</span></div>
+  <div class="stage"><div class="tnc">
+    <div class="box" id="tncBox"></div>
+    <label id="tncLabel"><input type="checkbox" id="tncCheck" disabled> I have read every word</label>
+    <div class="out" id="tncOut" style="font-size:14px"></div>
+  </div></div>
+  <p class="crime"><b>Crime</b>Checkbox stays disabled until you scroll to the bottom. Then the text grows. Then the checkbox ticks itself off if you blink.</p>
+  <p class="fix"><b>Do instead:</b> a short plain-language summary up top, the full terms one link away, and a checkbox that just works.</p>
+</section>
+
+<!-- 8 -->
+<section class="ex" data-ex>
+  <div class="head"><h2>Age, precise to the year</h2><span class="no">#08</span></div>
+  <div class="stage"><div style="width:100%;text-align:center">
+    <input type="range" class="age" id="age" min="0" max="250000" value="125000" aria-label="Age">
+    <div class="out" id="ageOut"></div>
+    <div style="font-size:12px;margin-top:6px">Range: 0 – 250,000 years. Each pixel ≈ 900 years.</div>
+  </div></div>
+  <p class="crime"><b>Crime</b>A slider with a quarter-million values and 280 pixels. Getting exactly 29 is a geological event.</p>
+  <p class="fix"><b>Do instead:</b> a number field. Sliders are for approximate values where the exact number doesn’t matter.</p>
+</section>
+
+<!-- 9 -->
+<section class="ex" data-ex>
+  <div class="head"><h2>Volume, via π</h2><span class="no">#09</span></div>
+  <div class="stage"><div class="vol">
+    <div class="pi" id="piDigits">3.</div>
+    <button class="btn" id="piBtn">Next digit of π</button>
+    <div class="out" id="piOut">Volume: 3%</div>
+  </div></div>
+  <p class="crime"><b>Crime</b>Your volume is whatever two-digit pair of π you’re currently on. Want 50%? That’s 30 clicks away. Keep clicking.</p>
+  <p class="fix"><b>Do instead:</b> honestly, anything. A slider. A knob. Two buttons. Shouting.</p>
+</section>
+
+</main>
+<footer>Made with spite by <b>Hariesh</b> · <a href="../">← back to the lab</a></footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const won=new Set(); function survive(n){ if(!won.has(n)){won.add(n); $('survived').textContent=won.size;} }
+
+// ---------- 1. Rotary dial ----------
+(()=>{
+  const dial=$('dial'); const R=100, digits=['1','2','3','4','5','6','7','8','9','0'];
+  // holes from ~60° (top right) going counter-clockwise
+  const holes=digits.map((d,i)=>{const a=(-60-i*28)*Math.PI/180;const el=document.createElement('div');el.className='hole';el.textContent=d;
+    el.style.left=(R+Math.cos(a)*72-15-3)+'px';el.style.top=(R+Math.sin(a)*72-15-3)+'px';dial.appendChild(el);return {d,a,el};});
+  const stop=document.createElement('div'); stop.className='stopper'; dial.parentElement.style.position='relative'; dial.parentElement.appendChild(stop);
+  let drag=null, rot=0, num='';
+  const ang=e=>{const r=dial.getBoundingClientRect();return Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2));};
+  dial.addEventListener('pointerdown',e=>{
+    const a=ang(e); let best=null,bd=9;
+    holes.forEach(h=>{const dd=Math.abs(Math.atan2(Math.sin(a-h.a),Math.cos(a-h.a)));if(dd<bd){bd=dd;best=h;}});
+    if(bd>.3) return; drag={h:best,start:a,prev:a}; dial.setPointerCapture(e.pointerId); dial.style.cursor='grabbing';
+  });
+  dial.addEventListener('pointermove',e=>{
+    if(!drag) return; const a=ang(e); let d=Math.atan2(Math.sin(a-drag.prev),Math.cos(a-drag.prev)); drag.prev=a;
+    rot=Math.max(0,rot+d); const need=(30*Math.PI/180)-drag.h.a; // to stopper at +30°
+    rot=Math.min(rot,need); dial.style.transform=`rotate(${rot}rad)`; drag.need=need;
+  });
+  const release=()=>{
+    if(!drag) return; dial.style.cursor='grab';
+    if(drag.need && rot>=drag.need-0.05){ num+=drag.h.d; if(num.length>10) num=num.slice(-10);
+      $('phone').textContent='+91 '+num.replace(/(\d{5})(\d+)/,'$1 $2'); if(num.length===10) survive(1); }
+    drag=null; dial.style.transition='transform .6s cubic-bezier(.2,.7,.3,1)'; dial.style.transform='rotate(0rad)'; rot=0;
+    setTimeout(()=>dial.style.transition='',650);
+  };
+  dial.addEventListener('pointerup',release); dial.addEventListener('pointercancel',release);
+})();
+
+// ---------- 2. Gravity volume ----------
+(()=>{
+  let pos=.5, v=0; const beam=$('beam'), ball=$('ball'), tilt=$('tilt');
+  function f(){ const deg=+tilt.value; beam.style.transform=`rotate(${deg}deg)`;
+    v+=Math.sin(deg*Math.PI/180)*0.0009; v*=.995; pos+=v;
+    if(pos<0){pos=0;v=-v*.4;} if(pos>1){pos=1;v=-v*.4;}
+    ball.style.left=`calc(${pos*100}% - 11px)`;
+    const vol=Math.round(pos*100); $('volOut').textContent='Volume: '+vol+'%';
+    if(vol===37 && Math.abs(v)<.0004) survive(2);
+    requestAnimationFrame(f);}
+  f();
+  $('volOut').title='Try to land on exactly 37%';
+})();
+
+// ---------- 3. Runaway ----------
+(()=>{
+  const st=$('runStage'), b=$('run'), msg=$('runMsg'); let flees=0;
+  const lines=['Nope.','Not today.','Too close!','I said no.','Personal space!','You again?','Okay I’m getting tired…','Fine. FINE.'];
+  function place(x,y){b.style.left=x+'px';b.style.top=y+'px';}
+  setTimeout(()=>place(st.clientWidth/2-45,st.clientHeight/2-22),50);
+  st.addEventListener('pointermove',e=>{
+    if(flees>=24) return;
+    const r=b.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2, d=Math.hypot(e.clientX-cx,e.clientY-cy);
+    if(d<90){ flees++; const s=st.getBoundingClientRect();
+      let nx=Math.random()*(s.width-110)+5, ny=Math.random()*(s.height-90)+5;
+      place(nx,ny); msg.textContent=lines[Math.min(lines.length-1,Math.floor(flees/3))]; }
+  });
+  b.onclick=()=>{msg.textContent='Submitted! (It respects persistence.)'; b.textContent='✓ Sent'; survive(3);};
+})();
+
+// ---------- 4. Slots ----------
+(()=>{
+  const M=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const reels={rD:{el:$('rD'),list:Array.from({length:31},(_,i)=>String(i+1).padStart(2,'0')),spin:false,i:0},
+               rM:{el:$('rM'),list:M,spin:false,i:0},
+               rY:{el:$('rY'),list:Array.from({length:110},(_,i)=>String(1920+i)),spin:false,i:70}};
+  Object.values(reels).forEach(r=>{r.el.style.cursor='pointer';r.el.onclick=()=>{r.spin=false;check();};});
+  $('spin').onclick=()=>{Object.values(reels).forEach(r=>r.spin=true);$('dobOut').textContent='';};
+  setInterval(()=>Object.values(reels).forEach(r=>{if(r.spin){r.i=(r.i+1+Math.floor(Math.random()*3))%r.list.length;r.el.textContent=r.list[r.i];}}),55);
+  function check(){ if(Object.values(reels).some(r=>r.spin)) return;
+    const d=reels.rD.list[reels.rD.i],m=reels.rM.list[reels.rM.i],y=reels.rY.list[reels.rY.i];
+    $('dobOut').textContent=`Born ${d} ${m} ${y}. Sure, whatever.`; survive(4);}
+})();
+
+// ---------- 5. Alphabet ----------
+(()=>{
+  const A='ABCDEFGHIJKLMNOPQRSTUVWXYZ'; let i=0, name='';
+  setInterval(()=>{i=(i+1)%26;$('letter').textContent=A[i];},650);
+  $('pick').onclick=()=>{name+=A[i];$('nameOut').textContent=name+'_';};
+  $('nameDone').onclick=()=>{ if(name.length>=3){$('nameOut').textContent='Hello, '+name+'! That only took forever.'; survive(5);} else $('nameOut').textContent='Name too short. Start again.'; name=''; };
+})();
+
+// ---------- 6. Captcha ----------
+(()=>{
+  const icons=['🌴','📎','🎷','🦆','🧾','🌈','🥥','🔌','🐌'];
+  const vibey=new Set([0,2,3,5,6]); // the secret
+  const g=$('grid'); let tries=0;
+  icons.forEach((ic,k)=>{const d=document.createElement('div');d.textContent=ic;d.onclick=()=>d.classList.toggle('on');g.appendChild(d);});
+  $('verify').onclick=()=>{ tries++;
+    const sel=[...g.children].map((d,k)=>d.classList.contains('on')?k:-1).filter(k=>k>=0);
+    const ok=sel.length===vibey.size&&sel.every(k=>vibey.has(k));
+    if(ok||tries>=5){$('capOut').textContent=ok?'Verified. You have impeccable vibes.':'We gave up. You’re probably human.';survive(6);}
+    else $('capOut').textContent=['Wrong. The duck has vibes.','Wrong. The paperclip does not.','Close. Think “beach holiday”.','The snail is a trick.'][Math.min(3,tries-1)];
+  };
+})();
+
+// ---------- 7. T&C ----------
+(()=>{
+  const box=$('tncBox'), chk=$('tncCheck');
+  const para='By existing near this form you agree to the following. Section %n: The User acknowledges that the Button may relocate at any time without notice. The User shall not hold the Designer liable for any frustration, mild or severe, arising from the use or attempted use of these inputs. ';
+  let n=1; const add=k=>{for(let i=0;i<k;i++){box.insertAdjacentHTML('beforeend','<p style="margin-bottom:6px">'+para.replace('%n',n++)+'</p>');}};
+  add(4); let grows=0;
+  box.addEventListener('scroll',()=>{
+    if(box.scrollTop+box.clientHeight>=box.scrollHeight-4){
+      if(grows<2){grows++; add(3); $('tncOut').textContent='Oh — there’s more. Sorry.';}
+      else { chk.disabled=false; $('tncOut').textContent='Okay, you may now tick the box.'; }
+    }
+  });
+  chk.addEventListener('change',()=>{ if(chk.checked){ $('tncOut').textContent='Ticked! Hold on…';
+    setTimeout(()=>{ if(Math.random()<.5){chk.checked=false;$('tncOut').textContent='Session timed out. Please re-read.';} else {$('tncOut').textContent='Agreed. Your soul is ours.';survive(7);} },900);} });
+})();
+
+// ---------- 8. Age ----------
+(()=>{
+  const s=$('age'); const f=()=>{const v=+s.value;$('ageOut').textContent='You are '+v.toLocaleString()+' years old'+(v>120?' (are you sure?)':'');if(v>=18&&v<=99)survive(8);};
+  s.oninput=f; f();
+})();
+
+// ---------- 9. Pi ----------
+(()=>{
+  const PI='14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384460955058223172535940812848111745028410270193852110555964462294895493038196';
+  let k=0;
+  $('piBtn').onclick=()=>{ k=(k+1)%(PI.length-1); const pair=PI.slice(k,k+2);
+    $('piDigits').textContent='3.'+PI.slice(Math.max(0,k-18),k+2);
+    $('piOut').textContent='Volume: '+(+pair)+'%'; if(+pair===50) survive(9); };
+})();
+</script>
+</body>
+</html>
